@@ -112,6 +112,9 @@ window.LOS = window.LOS || {};
     reviews: [],
     sessions: [],
     screen: { log: {}, videos: [], sites: {}, softLimit: null, extSync: null },
+    projects: [],
+    spirit: { tradition: null, showOnNow: true, plan: { id: null, day: 0, log: {} }, gratitude: {}, prayers: [], quiet: {}, quietRun: null },
+    news: { items: [], kev: [], fetchedAt: 0, read: {}, status: {}, filter: "all", timerEnd: null },
     focus: null,
     currentId: null,
     view: "now",
@@ -123,7 +126,7 @@ window.LOS = window.LOS || {};
       if (!raw) return defaults();
       const s = JSON.parse(raw);
       const d = defaults();
-      return { ...d, ...s, settings: { ...d.settings, ...(s.settings || {}) }, screen: { ...d.screen, ...(s.screen || {}) } };
+      return { ...d, ...s, settings: { ...d.settings, ...(s.settings || {}) }, screen: { ...d.screen, ...(s.screen || {}) }, spirit: { ...d.spirit, ...(s.spirit || {}) }, news: { ...d.news, ...(s.news || {}) } };
     } catch { return defaults(); }
   };
 
@@ -131,7 +134,7 @@ window.LOS = window.LOS || {};
     state: load(),
     save() { try { localStorage.setItem(KEY, JSON.stringify(this.state)); } catch { /* storage unavailable: keep in memory */ } },
     reset() { this.state = defaults(); this.save(); },
-    replace(obj) { const d = defaults(); this.state = { ...d, ...obj, settings: { ...d.settings, ...(obj.settings || {}) }, screen: { ...d.screen, ...(obj.screen || {}) } }; this.save(); },
+    replace(obj) { const d = defaults(); this.state = { ...d, ...obj, settings: { ...d.settings, ...(obj.settings || {}) }, screen: { ...d.screen, ...(obj.screen || {}) }, spirit: { ...d.spirit, ...(obj.spirit || {}) }, news: { ...d.news, ...(obj.news || {}) } }; this.save(); },
   };
 
   // ---------- Derived selectors ----------

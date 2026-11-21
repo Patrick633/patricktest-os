@@ -18,6 +18,10 @@
     habits: sv('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M15 17.5l2 2 4-4"/>', 20),
     checkin: sv('<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/>', 20),
     review: sv('<path d="M4 19V5M4 19h16M8 15l4-4 3 3 5-6"/>', 20),
+    projects: sv('<path d="M3 7h18M3 12h12M3 17h7"/><circle cx="19" cy="17" r="2.5"/>', 20),
+    spirit: sv('<path d="M12 3c2 3 5 4.5 5 8.5a5 5 0 0 1-10 0C7 7.5 10 6 12 3z"/><path d="M12 13v8M9 18h6"/>', 20),
+    news: sv('<path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/>', 20),
+    more: sv('<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>', 20),
     screen: sv('<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/>', 20),
     gear: sv('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
     check: sv('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 14),
@@ -33,11 +37,15 @@
     habitEmoji: "💧",
     editing: null, // task id being renamed
     whenFor: null, // task id with the "When?" picker open
+    moreOpen: false,
     modal: null,
     focusOpen: false,
     lastView: null,
   };
-  const TABS = [["now", "Now"], ["today", "Today"], ["inbox", "Inbox"], ["habits", "Habits"], ["checkin", "Check-in"], ["screen", "Screen"], ["review", "Review"]];
+  // Primary tabs stay visible; the rest live under "More" (fewer choices = less overwhelm).
+  const TABS = [["now", "Now"], ["today", "Today"], ["inbox", "Inbox"], ["projects", "Projects"], ["spirit", "Spirit"], ["news", "News"]];
+  const MORE = [["habits", "Habits"], ["checkin", "Check-in"], ["screen", "Screen"], ["review", "Review"]];
+  const MOBILE_MORE = ["spirit", "news"]; // on phones these also move into More
   const EST_STEPS = [null, 5, 15, 25, 45, 60, 90];
   const HABIT_EMOJIS = ["💧", "🏃", "🧘", "📓", "📚", "🎯", "💰", "💬", "😴", "🥗", "💊", "🌿", "☀️", "🎸", "🧹", "🦷"];
 
@@ -135,6 +143,7 @@
     t.status = "done";
     t.doneAt = Date.now();
     t.steps.forEach((s) => (s.done = true));
+    window.LOS.projects.onTask(t, true);
     if (S().currentId === id) S().currentId = sel.topToday()[0]?.id || null;
     save();
     render();
@@ -146,6 +155,7 @@
     const u = t.undo;
     t.status = u && u.status !== "done" ? u.status : "ready";
     t.doneAt = null;
+    window.LOS.projects.onTask(t, false);
     if (u) {
       t.steps.forEach((s, i) => { if (u.steps[i] != null) s.done = u.steps[i]; });
       if (u.wasCurrent) S().currentId = id;
@@ -368,7 +378,13 @@
         <header class="topbar">
           <div class="logo"><i></i>life/os</div>
           <nav class="tabs" aria-label="Main">
-            ${TABS.map(([id, l]) => `<button class="${S().view === id ? "on" : ""}" data-action="nav" data-view="${id}">${I[id]}<span>${l}</span>${id === "inbox" && inboxN ? `<span class="badge">${inboxN}</span>` : ""}</button>`).join("")}
+            ${TABS.map(([id, l]) => `<button class="${S().view === id ? "on" : ""} ${MOBILE_MORE.includes(id) ? "desk-only" : ""}" data-action="nav" data-view="${id}">${I[id]}<span>${l}</span>${id === "inbox" && inboxN ? `<span class="badge">${inboxN}</span>` : ""}</button>`).join("")}
+            <div class="more-wrap">
+              <button class="${MORE.some((x) => x[0] === S().view) ? "on" : ""} ${MOBILE_MORE.includes(S().view) ? "m-on" : ""}" data-action="more" aria-haspopup="true" aria-expanded="${ui.moreOpen}">${I.more}<span>More</span></button>
+              ${ui.moreOpen ? `<div class="more-menu" role="menu">
+                ${[...TABS.filter(([id]) => MOBILE_MORE.includes(id)).map((x) => [...x, "mob-only"]), ...MORE].map(([id, l, cls]) => `<button class="${S().view === id ? "on" : ""} ${cls || ""}" data-action="nav" data-view="${id}" role="menuitem">${I[id]}<span>${l}</span></button>`).join("")}
+              </div>` : ""}
+            </div>
           </nav>
           <form class="capture" data-form="capture" role="search">
             <span class="mut">＋</span>
@@ -469,7 +485,7 @@
     const f = S().focus;
     const ev = nextEvent();
     const top = sel.topToday();
-    const sub = [`${sel.winsToday()} wins today`, `${top.length} of ${MAX_TOP} priorities left`, ev ? `next: ${esc(ev.label)} ${relMin(toMin(ev.time) - nowMin())}` : ""].filter(Boolean).join(" · ");
+    const sub = [`${sel.winsToday()} ${sel.winsToday() === 1 ? "win" : "wins"} today`, `${top.length} of ${MAX_TOP} priorities left`, ev ? `next: ${esc(ev.label)} ${relMin(toMin(ev.time) - nowMin())}` : ""].filter(Boolean).join(" · ");
     const nudge = f && f.nudged ? `
       <div class="nudge">🧠 <span class="sp">You've been focused for <b>${fmtDur(focusElapsed())}</b>. Water, stretch, bathroom? Hyperfocus is a superpower, but bodies need breaks.</span>
         <button class="btn sm ghost" data-action="focus-stop">Take a break</button>
@@ -496,6 +512,7 @@
         <div class="c now-card" style="--area:${area ? area.color : "var(--lime)"}">
           <div class="meta">
             <span class="pill">Right now</span>
+            ${window.LOS.projects.projectOf(t) ? `<button class="pill vio" data-action="p-open" data-id="${t.projectId}">${window.LOS.projects.projectOf(t).emoji} ${esc(window.LOS.projects.projectOf(t).title)}</button>` : ""}
             ${area ? `<span class="pill gray"><span class="dot" style="background:${area.color}"></span> ${area.name}</span>` : ""}
             ${t.est ? `<span class="pill gray">~${fmtDur(t.est)}</span>` : ""}
             ${t.energy ? `<span class="pill gray">${energyOf(t.energy).e} ${energyOf(t.energy).l} energy</span>` : ""}
@@ -534,7 +551,7 @@
         ${nudge}
         <div class="grid g-now">
           <div class="stack">${card}${top3Card()}</div>
-          <div class="stack">${window.LOS.screen.nowNudge()}${arrivedCard()}${energyCard()}${nextUpCard()}${winsCard()}
+          <div class="stack">${window.LOS.screen.nowNudge()}${arrivedCard()}${energyCard()}${window.LOS.projects.nowCard()}${nextUpCard()}${winsCard()}${window.LOS.spirit.nowCard()}
             <button class="btn quiet" data-action="reset-day" style="align-self:flex-start">↺ Reset my day</button>
           </div>
         </div>
@@ -995,6 +1012,8 @@
           <div class="set-row"><div><b>Start over</b><small>Deletes everything in this browser</small></div><button class="btn sm ghost" style="color:var(--pink)" data-action="wipe">Delete all</button></div>
         </div>
         <div class="foot"><button class="btn primary" data-action="close">Done</button></div>`;
+    } else if (m.type === "new-project") {
+      inner = window.LOS.projects.newModal();
     } else if (m.type === "wipe") {
       inner = `<h2>Delete everything?</h2><p class="sub">This removes all tasks, habits and check-ins from this browser. Consider exporting first.</p>
         <div class="foot"><button class="btn quiet" data-action="close">Cancel</button><button class="btn primary" style="background:var(--pink)" data-action="wipe-confirm">Delete all</button></div>`;
@@ -1040,7 +1059,8 @@
       if (n) n.focus();
       return;
     }
-    const views = { now: nowView, today: todayView, inbox: inboxView, habits: habitsView, checkin: checkinView, screen: () => window.LOS.screen.view(), review: reviewView };
+    const views = { now: nowView, today: todayView, inbox: inboxView, habits: habitsView, checkin: checkinView, screen: () => window.LOS.screen.view(), review: reviewView,
+      projects: () => window.LOS.projects.view(), spirit: () => window.LOS.spirit.view(), news: () => window.LOS.news.view() };
     const v = views[S().view] ? S().view : "now";
     app.innerHTML = shell(views[v]()) + (S().focus && ui.focusOpen ? focusOverlay() : "");
     const same = ui.lastView === v;
@@ -1048,7 +1068,7 @@
     ui.lastView = v;
     const c2 = $("#capture");
     if (c2) { c2.value = capVal; if (capFocused) c2.focus(); }
-    const ed = $("[data-edit]");
+    const ed = $("[data-edit]") || $("[data-pedit]");
     if (ed) { ed.focus(); ed.setSelectionRange(ed.value.length, ed.value.length); }
     tick();
   };
@@ -1090,7 +1110,8 @@
       }
 
       // navigation
-      case "nav": s.view = el.dataset.view; save(); window.scrollTo(0, 0); return render();
+      case "more": ui.moreOpen = !ui.moreOpen; return render();
+      case "nav": ui.moreOpen = false; s.view = el.dataset.view; save(); window.scrollTo(0, 0); return render();
       case "settings": return openModal({ type: "settings" });
       case "focus-capture": $("#capture")?.focus(); return;
 
@@ -1241,7 +1262,9 @@
       case "wipe-confirm": store.reset(); ui.modal = null; renderModal(); ui.onbStep = 0; return render();
       case "close": return closeModal();
       case "overlay": if (e.target === el) closeModal(); return;
-      default: window.LOS.screen.act(a, el); return;
+      default:
+        for (const m of ["screen", "projects", "spirit", "news"]) if (window.LOS[m] && window.LOS[m].act(a, el)) return;
+        return;
     }
     save();
     render();
@@ -1250,6 +1273,7 @@
 
   document.addEventListener("click", (e) => {
     const el = e.target.closest("[data-action]");
+    if (ui.moreOpen && !e.target.closest(".more-wrap")) { ui.moreOpen = false; if (!el) { render(); return; } }
     if (!el || el.disabled) return;
     if (el.dataset.action !== "overlay") e.stopPropagation();
     act(el.dataset.action, el, e);
@@ -1301,7 +1325,9 @@
         save(); renderModal(); render();
         return;
       }
-      default: return;
+      default:
+        for (const m of ["projects", "spirit"]) if (window.LOS[m].submit(f, d)) return;
+        return;
     }
     save();
     render();
@@ -1314,6 +1340,7 @@
     if (el.dataset.setting) { S().settings[el.dataset.setting] = Number(el.value); save(); render(); }
     if (el.hasAttribute("data-setting-name")) { S().name = el.value.trim(); save(); render(); }
     if (el.dataset.planDate && el.value) { ui.whenFor = null; setPlan(sel.task(el.dataset.planDate), makePlan("date", el.value)); save(); render(); }
+    if (window.LOS.projects.change(el)) return;
     if (el.hasAttribute("data-screen-import") && el.files.length) window.LOS.screen.importFiles([...el.files]);
     if (el.hasAttribute("data-import") && el.files[0]) {
       const r = new FileReader();
@@ -1352,7 +1379,8 @@
     if (e.key === "Enter" && document.activeElement?.id === "onbName") act("onb-next", document.activeElement, e);
   });
 
-  window.LOS.app = { toast, render, save, reward };
+  window.LOS.icons = I;
+  window.LOS.app = { toast, render, save, reward, addTask, makeTop, startFocus, openModal, closeModal, renderModal };
   render();
   window.LOS.render = render;
 })();

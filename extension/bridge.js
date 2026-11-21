@@ -13,7 +13,13 @@
   };
 
   window.addEventListener("message", (e) => {
-    if (e.source === window && e.data && e.data.source === "lifeos-page" && e.data.type === "sync-request") send();
+    if (e.source !== window || !e.data || e.data.source !== "lifeos-page") return;
+    if (e.data.type === "sync-request") send();
+    if (e.data.type === "news-request") {
+      chrome.runtime.sendMessage({ type: "news-fetch" })
+        .then((payload) => window.postMessage({ source: "lifeos-companion", type: "news", payload }, window.location.origin === "null" ? "*" : window.location.origin))
+        .catch(() => {});
+    }
   });
   send();
   setInterval(send, 60 * 1000);

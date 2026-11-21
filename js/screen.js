@@ -146,7 +146,7 @@ window.LOS = window.LOS || {};
 
   // ================================================================ extension bridge
   window.addEventListener("message", (e) => {
-    if (e.source !== window || !e.data || e.data.source !== "lifeos-companion") return;
+    if (e.source !== window || !e.data || e.data.source !== "lifeos-companion" || e.data.type === "news") return;
     const p = e.data.payload || {};
     if (p.sites) Object.assign(SC().sites, p.sites); // extension is the source of truth per day
     if (Array.isArray(p.videos)) {

@@ -112,6 +112,45 @@ chrome.alarms.onAlarm.addListener((a) => queue(a.name === "prune" ? prune : refr
 chrome.runtime.onStartup.addListener(() => queue(refresh));
 chrome.runtime.onInstalled.addListener(() => queue(refresh));
 
+// Cybersecurity news: the page can't read these feeds (no CORS), so the extension fetches them.
+// Only this fixed list is ever fetched.
+const NEWS_FEEDS = {
+  thn: "https://feeds.feedburner.com/TheHackersNews",
+  bleeping: "https://www.bleepingcomputer.com/feed/",
+  krebs: "https://krebsonsecurity.com/feed/",
+  securityweek: "https://www.securityweek.com/feed/",
+  darkreading: "https://www.darkreading.com/rss.xml",
+};
+const KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json";
+const getText = async (url) => {
+  const ctl = new AbortController();
+  const t = setTimeout(() => ctl.abort(), 10000);
+  try { const r = await fetch(url, { signal: ctl.signal, cache: "no-store" }); return r.ok ? await r.text() : null; }
+  catch { return null; }
+  finally { clearTimeout(t); }
+};
+async function fetchNews() {
+  const keys = Object.keys(NEWS_FEEDS);
+  const texts = await Promise.all(keys.map((k) => getText(NEWS_FEEDS[k])));
+  const feeds = {};
+  keys.forEach((k, i) => { feeds[k] = texts[i]; });
+  // the KEV catalog is large: send it at most every 6 hours
+  const { kevCache } = await chrome.storage.local.get("kevCache");
+  let kev = kevCache && Date.now() - kevCache.at < 6 * 3600e3 ? kevCache.text : null;
+  if (!kev) {
+    const full = await getText(KEV_URL);
+    if (full) {
+      try {
+        const j = JSON.parse(full);
+        j.vulnerabilities = (j.vulnerabilities || []).sort((a, b) => (b.dateAdded || "").localeCompare(a.dateAdded || "")).slice(0, 25);
+        kev = JSON.stringify(j);
+        await chrome.storage.local.set({ kevCache: { at: Date.now(), text: kev } });
+      } catch { kev = null; }
+    }
+  }
+  return { feeds, kev };
+}
+
 // The bridge script tells us which tabs are Life OS (so we don't count them).
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (msg?.type === "lifeos-tab" && sender.tab) {
@@ -122,5 +161,6 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     });
   }
   if (msg?.type === "flush") queue(refresh).then(() => reply({ ok: true }));
-  return msg?.type === "flush";
+  if (msg?.type === "news-fetch") fetchNews().then(reply);
+  return msg?.type === "flush" || msg?.type === "news-fetch";
 });
