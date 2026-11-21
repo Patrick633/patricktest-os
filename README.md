@@ -26,9 +26,26 @@ Dark "command center" look. It runs entirely in the browser: no build step, no a
 - **Inbox**: Inbox / Ready / Whenever / Done lists, energy filter, one-tap tags (area, energy, time estimate), brain dump.
 - **Habits**: full or mini check-ins, 7-day row, 26-week consistency heatmap.
 - **Check-in**: mood and energy, notes, 30-day chart and an insight.
+- **Screen**: screen time and video history, without judgment (see below).
 - **Review**: weekly stats, estimate accuracy ("things take you 1.4× your estimates") and 3 guided questions.
 - **Focus mode**: full-screen shrinking timer, next step, +5 min, generated brown noise, stop and save a note.
 - **Settings**: name, sounds, calm mode, desktop alerts, hyperfocus check, when the day ends, export/import, delete all.
+
+## Screen time & videos (Mac + iPhone)
+
+Apple doesn't let apps (let alone websites) read Screen Time, and YouTube/Netflix have no API for watch history, so Life OS combines three sources:
+
+1. **Daily log (10 sec)**: type your iPhone and Mac totals from *Settings → Screen Time* in **Screen** or **Check-in**. After 7pm the Now screen reminds you once.
+2. **Import history**: YouTube via Google Takeout (`watch-history.json` or `.html`, English or Portuguese) and Netflix (`ViewingActivity.csv` with real durations, or the simple viewing-history CSV). Re-importing never duplicates. YouTube durations are estimated from the gap between videos.
+3. **Browser companion** (`extension/`, for Chrome, Arc, Brave or Edge on the Mac): counts time on the active tab per site (paused when idle or unfocused) and saves YouTube titles. Life OS syncs with it automatically while open.
+
+The Screen tab shows a 14-day chart (iPhone, Mac/browser, videos), an optional soft limit, a 24-hour "when you watch" chart, top channels and shows, a list of watched videos, and insights such as screen time vs. wins, late-night videos vs. next-morning energy, and YouTube rabbit holes (5+ videos back to back).
+
+### Install the browser companion
+
+1. Open `chrome://extensions` and turn on **Developer mode**.
+2. Click **Load unpacked** and select the `extension` folder.
+3. Open Life OS at `http://localhost:8000` (see below). If you open `index.html` directly, enable **Allow access to file URLs** in the extension's details.
 
 ## Run
 
@@ -47,6 +64,8 @@ index.html        app shell
 css/style.css     design tokens + components (dark theme)
 js/store.js       state, persistence, selectors, date helpers
 js/fx.js          chime, brown noise, confetti
+js/screen.js      screen time: log, Takeout/Netflix import, extension bridge, insights
 js/app.js         views, focus mode, modals, events
+extension/        Life OS Companion browser extension (Manifest V3)
 concepts/         earlier visual explorations (A bento, B dark, C editorial)
 ```

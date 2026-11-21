@@ -18,6 +18,7 @@
     habits: sv('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M15 17.5l2 2 4-4"/>', 20),
     checkin: sv('<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/>', 20),
     review: sv('<path d="M4 19V5M4 19h16M8 15l4-4 3 3 5-6"/>', 20),
+    screen: sv('<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/>', 20),
     gear: sv('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
     check: sv('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 14),
     x: sv('<path d="M6 6l12 12M18 6L6 18"/>', 14),
@@ -34,7 +35,7 @@
     focusOpen: false,
     lastView: null,
   };
-  const TABS = [["now", "Now"], ["today", "Today"], ["inbox", "Inbox"], ["habits", "Habits"], ["checkin", "Check-in"], ["review", "Review"]];
+  const TABS = [["now", "Now"], ["today", "Today"], ["inbox", "Inbox"], ["habits", "Habits"], ["checkin", "Check-in"], ["screen", "Screen"], ["review", "Review"]];
   const EST_STEPS = [null, 5, 15, 25, 45, 60, 90];
   const HABIT_EMOJIS = ["💧", "🏃", "🧘", "📓", "📚", "🎯", "💰", "💬", "😴", "🥗", "💊", "🌿", "☀️", "🎸", "🧹", "🦷"];
 
@@ -495,7 +496,7 @@
         ${nudge}
         <div class="grid g-now">
           <div class="stack">${card}${top3Card()}</div>
-          <div class="stack">${energyCard()}${nextUpCard()}${winsCard()}
+          <div class="stack">${window.LOS.screen.nowNudge()}${energyCard()}${nextUpCard()}${winsCard()}
             <button class="btn quiet" data-action="reset-day" style="align-self:flex-start">↺ Reset my day</button>
           </div>
         </div>
@@ -741,6 +742,7 @@
               </svg>
               <div class="legend"><i style="background:var(--vio)"></i> mood <i style="background:var(--lime);margin-left:8px"></i> energy</div>
             </div>
+            ${window.LOS.screen.logCard(true)}
             <div class="c"><h3>Insight</h3><p style="line-height:1.6;color:var(--ink-2)">${insight}</p></div>
             ${recent.length ? `<div class="c"><h3>Recent notes</h3>${recent.map(([k, v]) => `<div class="past-review"><small>${k} · ${v.mood != null ? MOODS[v.mood].e : ""} ${v.energy ? energyOf(v.energy).e : ""}</small><p>${esc(v.note)}</p></div>`).join("")}</div>` : ""}
           </div>
@@ -930,7 +932,7 @@
       if (n) n.focus();
       return;
     }
-    const views = { now: nowView, today: todayView, inbox: inboxView, habits: habitsView, checkin: checkinView, review: reviewView };
+    const views = { now: nowView, today: todayView, inbox: inboxView, habits: habitsView, checkin: checkinView, screen: () => window.LOS.screen.view(), review: reviewView };
     const v = views[S().view] ? S().view : "now";
     app.innerHTML = shell(views[v]()) + (S().focus && ui.focusOpen ? focusOverlay() : "");
     const same = ui.lastView === v;
@@ -1104,7 +1106,7 @@
       case "wipe-confirm": store.reset(); ui.modal = null; renderModal(); ui.onbStep = 0; return render();
       case "close": return closeModal();
       case "overlay": if (e.target === el) closeModal(); return;
-      default: return;
+      default: window.LOS.screen.act(a, el); return;
     }
     save();
     render();
@@ -1148,6 +1150,9 @@
         save(); render();
         reward("Review saved. That's real self-awareness. ✓");
         return;
+      case "screen-log":
+        window.LOS.screen.submit(f, d);
+        return;
       case "step": {
         const t = sel.task(f.dataset.id);
         if (d.text.trim()) t.steps.push({ id: uid(), text: d.text.trim(), done: false });
@@ -1173,6 +1178,7 @@
     if (el.dataset.note) { const t = sel.task(el.dataset.note); if (t) { t.note = el.value.trim(); save(); toast("📌 Saved for future you"); } }
     if (el.dataset.setting) { S().settings[el.dataset.setting] = Number(el.value); save(); render(); }
     if (el.hasAttribute("data-setting-name")) { S().name = el.value.trim(); save(); render(); }
+    if (el.hasAttribute("data-screen-import") && el.files.length) window.LOS.screen.importFiles([...el.files]);
     if (el.hasAttribute("data-import") && el.files[0]) {
       const r = new FileReader();
       r.onload = () => {
@@ -1195,6 +1201,7 @@
     if (e.key === "Enter" && document.activeElement?.id === "onbName") act("onb-next", document.activeElement, e);
   });
 
+  window.LOS.app = { toast, render, save, reward };
   render();
   window.LOS.render = render;
 })();

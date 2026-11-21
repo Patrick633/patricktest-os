@@ -67,6 +67,7 @@ window.LOS = window.LOS || {};
     schedule: [],
     reviews: [],
     sessions: [],
+    screen: { log: {}, videos: [], sites: {}, softLimit: null, extSync: null },
     focus: null,
     currentId: null,
     view: "now",
@@ -78,7 +79,7 @@ window.LOS = window.LOS || {};
       if (!raw) return defaults();
       const s = JSON.parse(raw);
       const d = defaults();
-      return { ...d, ...s, settings: { ...d.settings, ...(s.settings || {}) } };
+      return { ...d, ...s, settings: { ...d.settings, ...(s.settings || {}) }, screen: { ...d.screen, ...(s.screen || {}) } };
     } catch { return defaults(); }
   };
 
@@ -86,7 +87,7 @@ window.LOS = window.LOS || {};
     state: load(),
     save() { try { localStorage.setItem(KEY, JSON.stringify(this.state)); } catch { /* storage unavailable: keep in memory */ } },
     reset() { this.state = defaults(); this.save(); },
-    replace(obj) { const d = defaults(); this.state = { ...d, ...obj, settings: { ...d.settings, ...(obj.settings || {}) } }; this.save(); },
+    replace(obj) { const d = defaults(); this.state = { ...d, ...obj, settings: { ...d.settings, ...(obj.settings || {}) }, screen: { ...d.screen, ...(obj.screen || {}) } }; this.save(); },
   };
 
   // ---------- Derived selectors ----------

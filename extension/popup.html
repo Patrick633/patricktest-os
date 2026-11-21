@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Life OS Companion</title>
+  <style>
+    :root { color-scheme: dark; }
+    body { width: 300px; margin: 0; padding: 16px; background: #0a0a0d; color: #f2f2f5; font: 13px/1.4 -apple-system, system-ui, sans-serif; }
+    h1 { font-size: 14px; margin: 0 0 12px; display: flex; align-items: center; gap: 8px; }
+    h1 i { width: 8px; height: 8px; border-radius: 50%; background: #c8ff4d; box-shadow: 0 0 10px #c8ff4d; }
+    .total { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+    .mut { color: #74748a; }
+    h2 { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #74748a; margin: 16px 0 6px; font-weight: 500; }
+    .row { position: relative; display: flex; justify-content: space-between; gap: 8px; padding: 5px 0 7px; }
+    .row span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .row i { position: absolute; left: 0; bottom: 1px; height: 2px; border-radius: 2px; background: #4dd8ff; }
+    .v { padding: 5px 0; border-bottom: 1px solid #22222c; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    p.note { margin-top: 14px; font-size: 11px; color: #74748a; }
+  </style>
+</head>
+<body>
+  <h1><i></i>Life OS Companion</h1>
+  <div class="total" id="total">–</div>
+  <div class="mut">in the browser today (active tab only)</div>
+  <h2>Top sites</h2>
+  <div id="sites"></div>
+  <h2>YouTube today</h2>
+  <div id="videos"></div>
+  <p class="note">Open Life OS to sync. Nothing leaves this computer.</p>
+  <script src="popup.js"></script>
+</body>
+</html>
