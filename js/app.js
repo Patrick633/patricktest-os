@@ -74,12 +74,14 @@
 
   const NORMAL = ["Done. That counts. ✓", "Nice: one less thing in your head.", "Progress! ✓", "Look at you go.", "Boom. Ready for the next tiny thing?"];
   const BONUS = ["✨ Bonus: you're on a roll today!", "✨ Your future self says thanks.", "✨ Legendary. Take a 2-minute victory lap.", "✨ That's momentum. Feel it?"];
-  const reward = (msg) => {
+  /** undo: optional function that reverts the action (adds an "Undo" button to the toast) */
+  const reward = (msg, undo = null) => {
     const bonus = Math.random() < 0.25; // variable rewards keep it interesting
     if (S().settings.sound) fx.chime(bonus);
     if (!S().settings.reduceMotion) fx.confetti(bonus ? 110 : 45);
     const wins = sel.winsToday();
-    toast(bonus ? BONUS[(Math.random() * BONUS.length) | 0] : `${msg || NORMAL[(Math.random() * NORMAL.length) | 0]} <span class="mut">· ${wins} ${wins === 1 ? "win" : "wins"} today</span>`, { bonus });
+    toast(bonus ? BONUS[(Math.random() * BONUS.length) | 0] : `${msg || NORMAL[(Math.random() * NORMAL.length) | 0]} <span class="mut">· ${wins} ${wins === 1 ? "win" : "wins"} today</span>`,
+      { bonus, action: undo ? { label: "Undo", fn: () => { undo(); save(); render(); toast("Undone ↺"); } } : null, ms: 3500 });
   };
 
   // ---------------------------------------------------------------- task actions
@@ -128,19 +130,27 @@
     const t = sel.task(id);
     if (!t) return;
     if (S().focus?.taskId === id) endFocus({ silent: true });
+    const before = { status: t.status, steps: t.steps.map((x) => x.done), wasCurrent: S().currentId === id };
+    t.undo = before; // lets "Undo" restore the task exactly as it was
     t.status = "done";
     t.doneAt = Date.now();
     t.steps.forEach((s) => (s.done = true));
     if (S().currentId === id) S().currentId = sel.topToday()[0]?.id || null;
     save();
     render();
-    reward();
+    reward(null, () => uncomplete(id));
   };
   const uncomplete = (id) => {
     const t = sel.task(id);
     if (!t) return;
-    t.status = "ready";
+    const u = t.undo;
+    t.status = u && u.status !== "done" ? u.status : "ready";
     t.doneAt = null;
+    if (u) {
+      t.steps.forEach((s, i) => { if (u.steps[i] != null) s.done = u.steps[i]; });
+      if (u.wasCurrent) S().currentId = id;
+    }
+    delete t.undo;
   };
   const setPlan = (t, plan) => {
     if (!t || !plan) return;
@@ -445,8 +455,11 @@
     return `
       <div class="c">
         <h3>Wins today</h3>
-        <div class="wins"><b>${w}</b><span class="mut">${w ? "things done. That counts." : "Every tiny thing counts. Even a mini habit."}</span></div>
-        ${done.length ? `<div class="mini-list" style="margin-top:12px">${done.slice(0, 4).map((t) => `<div class="mini-item"><span style="color:var(--accent-ink)">${I.check}</span><span class="t">${esc(t.title)}</span></div>`).join("")}</div>` : ""}
+        <div class="wins"><b>${w}</b><span class="mut">${w === 1 ? "thing done. That counts." : w ? "things done. That counts." : "Every tiny thing counts. Even a mini habit."}</span></div>
+        ${w ? `<div class="mini-list" style="margin-top:12px">
+          ${done.map((t) => `<div class="mini-item win-row"><span style="color:var(--accent-ink)">${I.check}</span><span class="t">${esc(t.title)}</span><button class="tiny undo" data-action="undone" data-id="${t.id}" title="Mark as not done">↺ Undo</button></div>`).join("")}
+          ${S().habits.filter((h) => h.log[today()]).map((h) => `<div class="mini-item win-row"><span>${h.emoji}</span><span class="t">${esc(h.name)}${h.log[today()] === "mini" ? ` <span class="mut">(mini)</span>` : ""}</span><button class="tiny undo" data-action="habit-undo" data-id="${h.id}" title="Mark as not done">↺ Undo</button></div>`).join("")}
+        </div>` : ""}
       </div>`;
   };
 
@@ -1083,7 +1096,7 @@
 
       // tasks
       case "done": if (t) completeTask(id); return;
-      case "undone": uncomplete(id); break;
+      case "undone": uncomplete(id); toast("Undone ↺ Back on your list."); break;
       case "set-current": s.currentId = id; s.view = "now"; break;
       case "drop-top": if (t) { t.topDate = null; if (s.currentId === id) s.currentId = null; } break;
       case "add-top": if (!makeTop(id)) return; if (ui.modal) { save(); renderModal(); render(); return; } toast("Added to today ★"); break;
@@ -1172,10 +1185,17 @@
         const h = s.habits.find((x) => x.id === id);
         const v = el.dataset.v;
         if (h.log[today()] === v) { delete h.log[today()]; break; }
+        const prev = h.log[today()];
         h.log[today()] = v;
         save(); render();
-        reward(v === "mini" ? "Mini counts. Still showed up. ✓" : `${h.emoji} ${esc(h.name)} ✓`);
+        reward(v === "mini" ? "Mini counts. Still showed up. ✓" : `${h.emoji} ${esc(h.name)} ✓`, () => { if (prev) h.log[today()] = prev; else delete h.log[today()]; });
         return;
+      }
+      case "habit-undo": {
+        const h = s.habits.find((x) => x.id === id);
+        if (h) delete h.log[today()];
+        toast("Undone ↺");
+        break;
       }
       case "del-habit": {
         const h = s.habits.find((x) => x.id === id);
