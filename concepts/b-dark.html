@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Life OS · Dark</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0a0a0d;--card:#121218;--line:#22222c;--ink:#f2f2f5;--mut:#6f6f80;--lime:#c8ff4d;--vio:#8b7cff;--pink:#ff5c8a}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:"Space Grotesk",system-ui,sans-serif;min-height:100vh;padding:24px 32px;
+  background-image:radial-gradient(600px 300px at 85% -5%,rgba(139,124,255,.18),transparent),radial-gradient(500px 300px at 0% 100%,rgba(200,255,77,.08),transparent)}
+.mono{font-family:"JetBrains Mono",monospace}
+nav{display:flex;align-items:center;gap:28px;margin-bottom:28px}
+.logo{font-weight:700;font-size:18px;display:flex;gap:8px;align-items:center}
+.logo i{width:10px;height:10px;border-radius:50%;background:var(--lime);box-shadow:0 0 14px var(--lime)}
+nav a{color:var(--mut);text-decoration:none;font-size:14px}nav a.on{color:var(--ink)}
+.cmd{margin-left:auto;display:flex;gap:10px;align-items:center;border:1px solid var(--line);background:var(--card);padding:10px 14px;border-radius:12px;color:var(--mut);font-size:13px;width:340px}
+.cmd kbd{margin-left:auto;font-family:"JetBrains Mono";font-size:11px;border:1px solid var(--line);padding:2px 6px;border-radius:6px}
+.av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,var(--vio),var(--pink))}
+.hero{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px}
+.hero h1{font-size:46px;font-weight:600;letter-spacing:-.03em;line-height:1}
+.hero h1 span{color:var(--lime)}
+.hero p{color:var(--mut);margin-top:10px}
+.kpis{display:flex;gap:28px}
+.kpi small{color:var(--mut);font-size:12px;display:block}.kpi b{font-size:28px;font-weight:600}
+.grid{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:16px}
+.c{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:20px}
+.c h3{font-size:13px;font-weight:500;color:var(--mut);display:flex;justify-content:space-between;margin-bottom:16px;text-transform:uppercase;letter-spacing:.08em}
+.heat{display:grid;grid-template-rows:repeat(7,26px);grid-auto-flow:column;grid-auto-columns:1fr;gap:5px}
+.heat i{border-radius:6px;background:#1c1c25}
+.legend{display:flex;gap:4px;align-items:center;font-size:11px;color:var(--mut);margin-top:14px}
+.legend i{width:12px;height:12px;border-radius:3px}
+.hab{display:flex;align-items:center;gap:12px;padding:12px;border-radius:14px;background:#17171f;margin-bottom:8px;font-size:14px}
+.hab .sw{margin-left:auto;width:38px;height:22px;border-radius:99px;background:#262631;position:relative}
+.hab .sw::after{content:"";position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:#55556a}
+.hab .sw.on{background:var(--lime)}.hab .sw.on::after{left:19px;background:#0a0a0d}
+.hab small{color:var(--mut)}
+.tl{position:relative;padding-left:18px}
+.tl::before{content:"";position:absolute;left:4px;top:6px;bottom:6px;width:1px;background:var(--line)}
+.ev{position:relative;margin-bottom:14px;font-size:14px}
+.ev::before{content:"";position:absolute;left:-18px;top:5px;width:9px;height:9px;border-radius:50%;background:var(--bg);border:2px solid var(--mut)}
+.ev.now::before{border-color:var(--lime);background:var(--lime);box-shadow:0 0 10px var(--lime)}
+.ev small{color:var(--mut);font-size:12px;display:block}
+.ring{display:flex;align-items:center;gap:20px}
+.goal{margin-bottom:14px;font-size:14px}.goal .b{height:6px;background:#1f1f29;border-radius:9px;margin-top:8px}.goal .b i{display:block;height:100%;border-radius:9px;background:linear-gradient(90deg,var(--vio),var(--pink))}
+.pill{font-size:11px;padding:3px 8px;border-radius:99px;background:rgba(200,255,77,.12);color:var(--lime)}
+</style></head><body>
+<nav>
+  <div class="logo"><i></i>life/os</div>
+  <a class="on" href="#">Visão geral</a><a href="#">Hábitos</a><a href="#">Humor</a><a href="#">Metas</a><a href="#">Diário</a>
+  <div class="cmd">⌕ Digite um comando… <kbd>⌘K</kbd></div><div class="av"></div>
+</nav>
+<div class="hero">
+  <div><h1>Sábado. <span>67%</span> do dia feito.</h1><p>4 de 6 hábitos · 3 tarefas abertas · próximo: Treino às 18:00</p></div>
+  <div class="kpis"><div class="kpi"><small>Sequência</small><b>12d</b></div><div class="kpi"><small>Humor médio</small><b>3.6</b></div><div class="kpi"><small>Foco hoje</small><b class="mono">2h40</b></div></div>
+</div>
+<div class="grid">
+  <div class="c"><h3>Consistência · últimas 26 semanas <span class="pill">+18% vs. mês passado</span></h3><div class="heat" id="heat"></div>
+    <div class="legend">menos <i style="background:#1c1c25"></i><i style="background:#3b4a1a"></i><i style="background:#6f9a22"></i><i style="background:#a6d93a"></i><i style="background:#c8ff4d"></i> mais</div></div>
+  <div class="c"><h3>Hábitos de hoje <span>4/6</span></h3>
+    <div class="hab">💧 Água 2L <small>🔥12</small><div class="sw on"></div></div>
+    <div class="hab">🏃 Treino <small>🔥5</small><div class="sw on"></div></div>
+    <div class="hab">🧘 Meditar <small>🔥8</small><div class="sw on"></div></div>
+    <div class="hab">📓 Diário <small>—</small><div class="sw"></div></div>
+  </div>
+  <div class="c"><h3>Agenda</h3><div class="tl">
+    <div class="ev"><small class="mono">08:00</small>Meditação + diário</div>
+    <div class="ev"><small class="mono">10:30</small>Bloco de foco · proposta</div>
+    <div class="ev now"><small class="mono">14:00 · agora</small>Revisar orçamento</div>
+    <div class="ev"><small class="mono">18:00</small>Treino — corrida 5 km</div>
+    <div class="ev"><small class="mono">22:45</small>Desligar telas</div></div></div>
+  <div class="c"><h3>Humor · 30 dias</h3>
+    <svg viewBox="0 0 600 150" width="100%" height="150"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#8b7cff" stop-opacity=".45"/><stop offset="1" stop-color="#8b7cff" stop-opacity="0"/></linearGradient></defs>
+    <path d="M0 100 C40 80 60 110 100 90 S160 50 200 70 260 100 300 60 360 40 400 55 460 90 500 50 560 30 600 40 V150 H0Z" fill="url(#g)"/>
+    <path d="M0 100 C40 80 60 110 100 90 S160 50 200 70 260 100 300 60 360 40 400 55 460 90 500 50 560 30 600 40" fill="none" stroke="#8b7cff" stroke-width="2.5"/>
+    <circle cx="600" cy="40" r="5" fill="#c8ff4d"/></svg></div>
+  <div class="c"><h3>Metas</h3>
+    <div class="goal">Correr 5 km <span class="mono" style="float:right;color:var(--mut)">70%</span><div class="b"><i style="width:70%"></i></div></div>
+    <div class="goal">24 livros <span class="mono" style="float:right;color:var(--mut)">20/24</span><div class="b"><i style="width:83%"></i></div></div>
+    <div class="goal">Reserva <span class="mono" style="float:right;color:var(--mut)">45%</span><div class="b"><i style="width:45%"></i></div></div></div>
+  <div class="c"><h3>Foco</h3><div class="ring">
+    <svg width="110" height="110" viewBox="0 0 110 110"><circle cx="55" cy="55" r="46" fill="none" stroke="#1f1f29" stroke-width="8"/><circle cx="55" cy="55" r="46" fill="none" stroke="#c8ff4d" stroke-width="8" stroke-linecap="round" stroke-dasharray="289" stroke-dashoffset="90" transform="rotate(-90 55 55)"/></svg>
+    <div><div class="mono" style="font-size:30px">17:42</div><small style="color:var(--mut)">Pomodoro 2 de 4</small></div></div></div>
+</div>
+<script>
+const h=document.getElementById('heat'),cols=['#1c1c25','#3b4a1a','#6f9a22','#a6d93a','#c8ff4d'];
+let s=7;const r=()=>(s=(s*9301+49297)%233280)/233280;
+for(let i=0;i<26*7;i++){const p=r()+i/26/7*.5;const l=p<.35?0:p<.55?1:p<.75?2:p<.95?3:4;const e=document.createElement('i');e.style.background=cols[l];h.appendChild(e)}
+</script>
+</body></html>

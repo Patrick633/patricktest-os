@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Life OS · Editorial</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f6f0e6;--paper:#fffaf2;--ink:#2a2420;--mut:#9a8f82;--line:#e8dfd0;--peach:#f6c9a8;--sage:#c9d9b8;--lav:#d6cdf0;--sky:#c4dcec;--rose:#f1c1c8;--terra:#c8643c}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font-family:"DM Sans",system-ui,sans-serif;min-height:100vh;padding:34px 56px}
+.serif{font-family:"Fraunces",Georgia,serif}
+nav{display:flex;align-items:center;gap:30px;padding-bottom:22px;border-bottom:1px solid var(--line);margin-bottom:34px}
+nav .logo{font-family:"Fraunces";font-size:24px;font-style:italic}
+nav a{color:var(--mut);text-decoration:none;font-size:14px}nav a.on{color:var(--ink);border-bottom:1.5px solid var(--ink);padding-bottom:3px}
+nav .r{margin-left:auto;display:flex;gap:12px;align-items:center;font-size:14px;color:var(--mut)}
+nav .r b{width:36px;height:36px;border-radius:50%;background:var(--peach);display:grid;place-items:center;color:var(--ink);font-family:"Fraunces"}
+.head{display:grid;grid-template-columns:1.3fr 1fr;gap:40px;align-items:end;margin-bottom:34px}
+.head h1{font-family:"Fraunces";font-weight:400;font-size:64px;line-height:1;letter-spacing:-.02em}
+.head h1 em{color:var(--terra)}
+.quote{font-family:"Fraunces";font-style:italic;font-size:19px;color:#5e544b;line-height:1.5;border-left:2px solid var(--terra);padding-left:18px}
+.quote small{display:block;font-family:"DM Sans";font-style:normal;font-size:12px;color:var(--mut);margin-top:8px}
+.cols{display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:22px}
+.card{background:var(--paper);border-radius:26px;padding:26px;border:1px solid var(--line)}
+.card h2{font-family:"Fraunces";font-weight:500;font-size:22px;margin-bottom:4px}
+.card .sub{color:var(--mut);font-size:13px;margin-bottom:20px}
+.slot{display:grid;grid-template-columns:56px 1fr;gap:12px;margin-bottom:10px;align-items:stretch}
+.slot time{font-size:12px;color:var(--mut);padding-top:12px}
+.slot div{border-radius:16px;padding:12px 14px;font-size:14px;font-weight:500}
+.slot div small{display:block;font-weight:400;font-size:12px;opacity:.7;margin-top:2px}
+.moodcard{background:var(--peach);border:0;position:relative;overflow:hidden}
+.moodcard::after{content:"";position:absolute;width:260px;height:260px;border-radius:50%;background:rgba(255,255,255,.28);right:-80px;top:-90px}
+.faces{display:flex;gap:10px;margin:18px 0 22px}
+.faces span{width:54px;height:54px;border-radius:50%;background:rgba(255,255,255,.55);display:grid;place-items:center;font-size:26px}
+.faces span.on{background:var(--ink);transform:scale(1.12)}
+.journal{background:rgba(255,255,255,.6);border-radius:18px;padding:16px;font-family:"Fraunces";font-size:16px;line-height:1.55;color:#4a4038;min-height:110px}
+.week{display:flex;gap:8px;margin-top:20px}
+.week div{flex:1;text-align:center;font-size:11px;color:#7a5a45}
+.week i{display:block;height:46px;border-radius:12px;margin-bottom:6px;background:rgba(255,255,255,.5)}
+.hp{display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:999px;margin-bottom:10px;font-size:14px;font-weight:500;border:1.5px solid var(--line)}
+.hp.on{border-color:transparent}
+.hp span{margin-left:auto;font-size:12px;opacity:.7}
+.hp .d{width:20px;height:20px;border-radius:50%;border:1.5px solid #cfc4b4;flex:none}
+.hp.on .d{background:var(--ink);border-color:var(--ink)}
+.gl{display:flex;gap:14px;align-items:center;margin-top:16px}
+.gl svg{flex:none}
+.gl b{font-weight:500;font-size:14px}.gl small{color:var(--mut);font-size:12px;display:block}
+</style></head><body>
+<nav><span class="logo">Life OS</span><a class="on" href="#">Hoje</a><a href="#">Hábitos</a><a href="#">Diário</a><a href="#">Metas</a><a href="#">Reflexões</a><div class="r">Sábado, 21 nov · <b>P</b></div></nav>
+<div class="head">
+  <h1 class="serif">Bom dia, Patrick.<br>Um dia de cada <em>vez</em>.</h1>
+  <div class="quote">“Nós somos o que fazemos repetidamente. A excelência, então, não é um ato, mas um hábito.”<small>Will Durant · inspiração do dia</small></div>
+</div>
+<div class="cols">
+  <div class="card"><h2>Seu dia</h2><p class="sub">5 blocos planejados</p>
+    <div class="slot"><time>07:30</time><div style="background:var(--sage)">Meditar e escrever<small>15 min · Mente</small></div></div>
+    <div class="slot"><time>09:00</time><div style="background:var(--sky)">Foco profundo<small>90 min · Trabalho</small></div></div>
+    <div class="slot"><time>12:30</time><div style="background:var(--line)">Almoço sem telas<small>45 min</small></div></div>
+    <div class="slot"><time>14:00</time><div style="background:var(--lav)">Revisar orçamento<small>30 min · Finanças</small></div></div>
+    <div class="slot"><time>18:00</time><div style="background:var(--rose)">Corrida 5 km<small>40 min · Saúde</small></div></div>
+  </div>
+  <div class="card moodcard"><h2>Como você está?</h2><p class="sub" style="color:#7a5a45">Respire. Registre. Siga em frente.</p>
+    <div class="faces"><span>😫</span><span>🙁</span><span>😐</span><span class="on">🙂</span><span>😄</span></div>
+    <div class="journal">Dormi bem, acordei com energia. Quero terminar a proposta antes do almoço e não pular a corrida hoje…</div>
+    <div class="week"><div><i style="background:#e9a986"></i>S</div><div><i></i>T</div><div><i style="background:#e9a986"></i>Q</div><div><i style="background:#de8b62"></i>Q</div><div><i style="background:#e9a986"></i>S</div><div><i style="background:var(--ink)"></i>S</div><div><i></i>D</div></div>
+  </div>
+  <div class="card"><h2>Rituais</h2><p class="sub">4 de 6 hoje · sequência de 12 dias</p>
+    <div class="hp on" style="background:var(--sky)"><div class="d"></div>💧 Beber 2L de água<span>12 d</span></div>
+    <div class="hp on" style="background:var(--rose)"><div class="d"></div>🏃 Treinar<span>5 d</span></div>
+    <div class="hp on" style="background:var(--sage)"><div class="d"></div>🧘 Meditar<span>8 d</span></div>
+    <div class="hp on" style="background:var(--lav)"><div class="d"></div>📚 Ler 20 páginas<span>3 d</span></div>
+    <div class="hp"><div class="d"></div>📓 Diário<span>—</span></div>
+    <div class="hp"><div class="d"></div>😴 Dormir cedo<span>2 d</span></div>
+    <div class="gl"><svg width="54" height="54" viewBox="0 0 54 54"><circle cx="27" cy="27" r="22" fill="none" stroke="#e8dfd0" stroke-width="6"/><circle cx="27" cy="27" r="22" fill="none" stroke="#c8643c" stroke-width="6" stroke-linecap="round" stroke-dasharray="138" stroke-dashoffset="41" transform="rotate(-90 27 27)"/></svg><div><b>Meta: correr 5 km</b><small>70% · faltam ~3 semanas</small></div></div>
+  </div>
+</div>
+</body></html>

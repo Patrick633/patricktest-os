@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Life OS · Bento</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#f4f3ef;--card:#fff;--ink:#111;--mut:#8b8a85;--line:#e9e7e1;--acc:#ff6a3d;--acc2:#ffe3d8;--mint:#c9f0d8}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);font-family:"Inter Tight",system-ui,sans-serif;color:var(--ink);display:flex;min-height:100vh}
+aside{width:232px;padding:28px 18px;display:flex;flex-direction:column;gap:4px;border-right:1px solid var(--line)}
+.logo{font-weight:700;font-size:18px;display:flex;align-items:center;gap:10px;margin:0 10px 28px}
+.logo i{width:28px;height:28px;border-radius:9px;background:var(--ink);display:grid;place-items:center;color:#fff;font-style:normal;font-size:14px}
+aside a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:12px;color:#55544f;text-decoration:none;font-size:14px;font-weight:500}
+aside a.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+aside a span{margin-left:auto;font-size:11px;background:var(--acc2);color:var(--acc);padding:2px 7px;border-radius:99px;font-weight:600}
+aside .grow{flex:1}
+.me{display:flex;align-items:center;gap:10px;padding:10px;border-radius:14px;background:var(--card)}
+.me b{width:34px;height:34px;border-radius:50%;background:var(--acc);color:#fff;display:grid;place-items:center}
+main{flex:1;padding:32px 40px}
+header{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:28px}
+header small{color:var(--mut);font-size:14px}
+header h1{font-size:40px;font-weight:600;letter-spacing:-.03em;margin-top:4px}
+.k{display:flex;gap:10px}
+.search{width:280px;padding:12px 16px;border-radius:14px;background:var(--card);border:1px solid var(--line);color:var(--mut);font-size:14px;display:flex;justify-content:space-between}
+.search kbd{font-family:inherit;font-size:11px;border:1px solid var(--line);padding:1px 6px;border-radius:6px}
+.btn{padding:12px 18px;border-radius:14px;background:var(--ink);color:#fff;font-weight:600;font-size:14px}
+.grid{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:150px;gap:16px}
+.c{background:var(--card);border-radius:24px;padding:22px;border:1px solid var(--line);position:relative;overflow:hidden}
+.c h3{font-size:13px;color:var(--mut);font-weight:500;display:flex;justify-content:space-between}
+.big{font-size:44px;font-weight:600;letter-spacing:-.04em}
+.s2{grid-column:span 2}.r2{grid-row:span 2}.r3{grid-row:span 3}
+.prog{display:flex;gap:28px;align-items:center;margin-top:18px}
+.habit{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px;font-weight:500}
+.habit:last-child{border:0}
+.habit em{font-style:normal;width:36px;height:36px;border-radius:11px;background:var(--bg);display:grid;place-items:center}
+.habit small{color:var(--mut);margin-left:auto;font-weight:400}
+.chk{width:22px;height:22px;border-radius:7px;border:1.5px solid #d6d4cd}
+.chk.on{background:var(--ink);border-color:var(--ink);position:relative}
+.chk.on::after{content:"";position:absolute;left:7px;top:3px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+.fire{background:var(--acc);color:#fff;border:0}
+.fire h3{color:#ffd7c8}
+.bars{display:flex;align-items:flex-end;gap:10px;height:170px;margin-top:20px}
+.bars div{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;font-size:11px;color:var(--mut);height:100%;justify-content:flex-end}
+.bars i{width:100%;border-radius:10px;background:var(--acc2)}
+.bars i.t{background:var(--acc)}
+.task{display:flex;gap:10px;align-items:center;font-size:14px;padding:8px 0}
+.tag{font-size:11px;padding:3px 8px;border-radius:99px;margin-left:auto;background:var(--bg);color:#55544f}
+.goal{margin-top:16px;font-size:14px;font-weight:500}
+.goal .b{height:8px;border-radius:9px;background:var(--bg);margin-top:8px;overflow:hidden}
+.goal .b i{display:block;height:100%;background:var(--ink);border-radius:9px}
+.focus{background:var(--ink);color:#fff;border:0}
+.focus h3{color:#8b8a85}
+.play{position:absolute;right:22px;bottom:22px;width:48px;height:48px;border-radius:50%;background:#fff;color:var(--ink);display:grid;place-items:center;font-size:16px}
+.mint{background:var(--mint);border:0}
+.mint h3{color:#3c7a55}
+</style></head><body>
+<aside>
+  <div class="logo"><i>◐</i>Life OS</div>
+  <a class="on" href="#">◻︎ Hoje</a><a href="#">☑︎ Hábitos <span>3</span></a><a href="#">☺︎ Humor</a><a href="#">◎ Metas</a><a href="#">▤ Diário</a><a href="#">◷ Agenda</a>
+  <div class="grow"></div>
+  <div class="me"><b>P</b><div style="font-size:13px"><strong>Patrick</strong><br><span style="color:var(--mut)">Plano pessoal</span></div></div>
+</aside>
+<main>
+  <header>
+    <div><small>Sábado, 21 de novembro</small><h1>Bom dia, Patrick.</h1></div>
+    <div class="k"><div class="search">Buscar ou criar… <kbd>⌘K</kbd></div><div class="btn">+ Novo</div></div>
+  </header>
+  <div class="grid">
+    <div class="c s2 r3">
+      <h3>Progresso de hoje <span>4 de 6</span></h3>
+      <div class="prog">
+        <svg width="130" height="130" viewBox="0 0 130 130"><circle cx="65" cy="65" r="54" fill="none" stroke="#f4f3ef" stroke-width="14"/><circle cx="65" cy="65" r="54" fill="none" stroke="#ff6a3d" stroke-width="14" stroke-linecap="round" stroke-dasharray="339" stroke-dashoffset="113" transform="rotate(-90 65 65)"/><text x="65" y="74" text-anchor="middle" font-size="28" font-weight="600" font-family="Inter Tight">67%</text></svg>
+        <div><div class="big">4/6</div><div style="color:var(--mut);font-size:14px">hábitos concluídos.<br>Faltam 2 para fechar o dia.</div></div>
+      </div>
+      <div style="margin-top:18px">
+        <div class="habit"><em>💧</em>Beber 2L de água<small>🔥 12</small><div class="chk on"></div></div>
+        <div class="habit"><em>🏃</em>Treinar 30 min<small>🔥 5</small><div class="chk on"></div></div>
+        <div class="habit"><em>🧘</em>Meditar 10 min<small>🔥 8</small><div class="chk on"></div></div>
+        <div class="habit"><em>📓</em>Escrever no diário<small>—</small><div class="chk"></div></div>
+                      </div>
+    </div>
+    <div class="c fire"><h3>Maior sequência</h3><div class="big" style="margin-top:14px">12 dias 🔥</div></div>
+    <div class="c mint"><h3>Humor de hoje</h3><div style="display:flex;align-items:center;gap:12px;margin-top:16px"><span style="font-size:44px">🙂</span><div><b style="font-size:20px">Bem</b><br><small style="color:#3c7a55">acima da média</small></div></div></div>
+    <div class="c s2 r2"><h3>Humor da semana <span>média 3,6</span></h3>
+      <div class="bars"><div><i style="height:45%"></i>S</div><div><i style="height:62%"></i>T</div><div><i style="height:38%"></i>Q</div><div><i style="height:70%"></i>Q</div><div><i style="height:85%"></i>S</div><div><i class="t" style="height:75%"></i>S</div><div><i style="height:0"></i>D</div></div>
+    </div>
+    <div class="c focus"><h3>Modo foco</h3><div class="big" style="margin-top:14px">25:00</div><div class="play">▶</div></div>
+    <div class="c"><h3>Água</h3><div class="big" style="margin-top:14px">1,4<span style="font-size:20px;color:var(--mut)"> / 2 L</span></div></div>
+    <div class="c s2 r2"><h3>Tarefas <span>3 abertas</span></h3>
+      <div style="margin-top:12px">
+        <div class="task"><div class="chk on"></div><s style="color:var(--mut)">Pagar fatura do cartão</s><span class="tag">Finanças</span></div>
+        <div class="task"><div class="chk"></div>Revisar orçamento do mês<span class="tag">Finanças</span></div>
+        <div class="task"><div class="chk"></div>Marcar dentista<span class="tag">Saúde</span></div>
+        <div class="task"><div class="chk"></div>Enviar proposta ao cliente<span class="tag">Trabalho</span></div>
+      </div>
+    </div>
+    <div class="c s2 r2"><h3>Metas 2026 <span>2 de 4</span></h3>
+      <div class="goal">🏃 Correr 5 km sem parar<div class="b"><i style="width:70%"></i></div></div>
+      <div class="goal">📚 Ler 24 livros<div class="b"><i style="width:83%"></i></div></div>
+      <div class="goal">💰 Reserva de emergência<div class="b"><i style="width:45%"></i></div></div>
+    </div>
+  </div>
+</main>
+</body></html>
