@@ -26,6 +26,7 @@ Dark "command center" look, with a warm off-white Morning theme. It runs entirel
 - **Inbox**: Inbox / Ready / Whenever / Done lists, energy filter, one-tap tags (area, energy, time estimate), brain dump.
 - **Habits**: full or mini check-ins, 7-day row, 26-week consistency heatmap.
 - **Check-in**: mood and energy, notes, 30-day chart and an insight.
+- **Time log** ("Doing now"): one tap to say what you're doing (work, quality time with your wife, church, commute, rest…). Switching closes the previous activity. Log things afterwards, edit times, and rename, re-emoji or remove any activity. Today shows a day bar and totals by category, Wins shows "Also today…", Review shows where your week went, and a time block happening now gets a ▶ Track button.
 - **Projects**: long goals (e.g. a 6-month study plan) split into phases on a timeline. Only the current phase is open; steps go to Today with one tap and get checked off when you finish the task. Shows progress vs time elapsed and weekly study hours.
 - **Spirit**: verse of the day (KJV or Almeida ARC) or stoic/mindful reflections, Bible reading plans that move forward when you read (never by the calendar), gratitude, prayer list with answered prayers, quiet-time timer.
 - **News**: a 5-minute cybersecurity brief. Hacker News and DEV.to work directly; The Hacker News, BleepingComputer, Krebs on Security, SecurityWeek, Dark Reading and CISA's actively exploited vulnerabilities come through the browser companion.
@@ -68,6 +69,7 @@ index.html        app shell
 css/style.css     design tokens + components (dark theme)
 js/store.js       state, persistence, selectors, date helpers
 js/fx.js          chime, brown noise, confetti
+js/timelog.js     time log: doing now, day bar, totals, editable activities
 js/projects.js    projects: phases, timeline, steps, study hours
 js/spirit.js      verse/reflection, reading plans, gratitude, prayer, quiet time
 js/news.js        cybersecurity news brief and CISA KEV

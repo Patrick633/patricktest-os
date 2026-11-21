@@ -460,7 +460,7 @@
     return `
       <div class="c">
         <h3>Next up <button class="r tagbtn" data-action="nav" data-view="today">Plan</button></h3>
-        ${ev ? `<div class="next-up"><span class="when">${relMin(toMin(ev.time) - n)}</span><div><b style="font-weight:500">${esc(ev.label)}</b><br><small class="mut mono">${ev.time} · ${fmtDur(ev.dur || 30)}</small></div></div>`
+        ${ev ? `<div class="next-up"><span class="when">${relMin(toMin(ev.time) - n)}</span><div class="grow"><b style="font-weight:500">${esc(ev.label)}</b><br><small class="mut mono">${ev.time} · ${fmtDur(ev.dur || 30)}</small></div>${toMin(ev.time) <= n && (!S().timelog.current || S().timelog.current.label !== ev.label) ? window.LOS.timelog.trackButton(ev) : ""}</div>`
           : `<div class="empty" style="padding:8px">Nothing scheduled. <button class="tagbtn" data-action="nav" data-view="today">Add a block</button></div>`}
       </div>`;
   };
@@ -471,7 +471,8 @@
     return `
       <div class="c">
         <h3>Wins today</h3>
-        <div class="wins"><b>${w}</b><span class="mut">${w === 1 ? "thing done. That counts." : w ? "things done. That counts." : "Every tiny thing counts. Even a mini habit."}</span></div>
+        <div class="wins"><b>${w}</b><span class="mut">${w === 1 ? "thing done. That counts." : w ? "things done. That counts." : window.LOS.timelog.loggedMin() ? "checkmarks, and that's fine. Life happened today:" : "Every tiny thing counts. Even a mini habit."}</span></div>
+        ${window.LOS.timelog.winsLine()}
         ${w ? `<div class="mini-list" style="margin-top:12px">
           ${done.map((t) => `<div class="mini-item win-row"><span style="color:var(--accent-ink)">${I.check}</span><span class="t">${esc(t.title)}</span><button class="tiny undo" data-action="undone" data-id="${t.id}" title="Mark as not done">↺ Undo</button></div>`).join("")}
           ${S().habits.filter((h) => h.log[today()]).map((h) => `<div class="mini-item win-row"><span>${h.emoji}</span><span class="t">${esc(h.name)}${h.log[today()] === "mini" ? ` <span class="mut">(mini)</span>` : ""}</span><button class="tiny undo" data-action="habit-undo" data-id="${h.id}" title="Mark as not done">↺ Undo</button></div>`).join("")}
@@ -485,7 +486,8 @@
     const f = S().focus;
     const ev = nextEvent();
     const top = sel.topToday();
-    const sub = [`${sel.winsToday()} ${sel.winsToday() === 1 ? "win" : "wins"} today`, `${top.length} of ${MAX_TOP} priorities left`, ev ? `next: ${esc(ev.label)} ${relMin(toMin(ev.time) - nowMin())}` : ""].filter(Boolean).join(" · ");
+    const lifeMin = window.LOS.timelog.loggedMin();
+    const sub = [`${sel.winsToday()} ${sel.winsToday() === 1 ? "win" : "wins"} today`, lifeMin ? `${fmtDur(lifeMin)} of life logged` : "", `${top.length} of ${MAX_TOP} priorities left`, ev ? `next: ${esc(ev.label)} ${relMin(toMin(ev.time) - nowMin())}` : ""].filter(Boolean).join(" · ");
     const nudge = f && f.nudged ? `
       <div class="nudge">🧠 <span class="sp">You've been focused for <b>${fmtDur(focusElapsed())}</b>. Water, stretch, bathroom? Hyperfocus is a superpower, but bodies need breaks.</span>
         <button class="btn sm ghost" data-action="focus-stop">Take a break</button>
@@ -551,7 +553,7 @@
         ${nudge}
         <div class="grid g-now">
           <div class="stack">${card}${top3Card()}</div>
-          <div class="stack">${window.LOS.screen.nowNudge()}${arrivedCard()}${energyCard()}${window.LOS.projects.nowCard()}${nextUpCard()}${winsCard()}${window.LOS.spirit.nowCard()}
+          <div class="stack">${window.LOS.screen.nowNudge()}${window.LOS.timelog.nowCard()}${arrivedCard()}${energyCard()}${window.LOS.projects.nowCard()}${nextUpCard()}${winsCard()}${window.LOS.spirit.nowCard()}
             <button class="btn quiet" data-action="reset-day" style="align-self:flex-start">↺ Reset my day</button>
           </div>
         </div>
@@ -640,7 +642,7 @@
             ${hs.length ? hs.map((h) => habitRow(h, true)).join("") : `<div class="empty">No habits yet. <button class="tagbtn" data-action="nav" data-view="habits">Add one</button></div>`}
             <p class="mut" style="font-size:12px;margin-top:6px">Mini counts. Missing a day never resets anything.</p>
           </div>
-          <div class="stack">${arrivedCard()}${energyCard()}${winsCard()}
+          <div class="stack">${window.LOS.timelog.todayCard()}${arrivedCard()}${energyCard()}${winsCard()}
             <button class="btn quiet" data-action="reset-day" style="align-self:flex-start">↺ Reset my day</button></div>
         </div>
       </section>`;
@@ -884,6 +886,7 @@
           </div>
           <p style="margin-top:16px;color:var(--ink-2);font-size:14px">⏱ ${estText}</p>
         </div>
+        ${window.LOS.timelog.weekCard()}
         <div class="grid g-2">
           <div class="c">
             <h3>Three questions</h3>
@@ -1263,7 +1266,7 @@
       case "close": return closeModal();
       case "overlay": if (e.target === el) closeModal(); return;
       default:
-        for (const m of ["screen", "projects", "spirit", "news"]) if (window.LOS[m] && window.LOS[m].act(a, el)) return;
+        for (const m of ["screen", "projects", "spirit", "news", "timelog"]) if (window.LOS[m] && window.LOS[m].act(a, el)) return;
         return;
     }
     save();
@@ -1326,7 +1329,7 @@
         return;
       }
       default:
-        for (const m of ["projects", "spirit"]) if (window.LOS[m].submit(f, d)) return;
+        for (const m of ["projects", "spirit", "timelog"]) if (window.LOS[m].submit(f, d)) return;
         return;
     }
     save();
@@ -1340,7 +1343,7 @@
     if (el.dataset.setting) { S().settings[el.dataset.setting] = Number(el.value); save(); render(); }
     if (el.hasAttribute("data-setting-name")) { S().name = el.value.trim(); save(); render(); }
     if (el.dataset.planDate && el.value) { ui.whenFor = null; setPlan(sel.task(el.dataset.planDate), makePlan("date", el.value)); save(); render(); }
-    if (window.LOS.projects.change(el)) return;
+    if (window.LOS.projects.change(el) || window.LOS.timelog.change(el)) return;
     if (el.hasAttribute("data-screen-import") && el.files.length) window.LOS.screen.importFiles([...el.files]);
     if (el.hasAttribute("data-import") && el.files[0]) {
       const r = new FileReader();
