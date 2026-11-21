@@ -1,631 +1,1200 @@
-/* Life OS — hábitos, humor, tarefas e metas num só lugar.
-   Vanilla JS, sem build. Dados ficam no localStorage do navegador. */
+/* Life OS — ADHD-friendly personal operating system.
+   Views: Onboarding, Now, Today, Inbox, Habits, Check-in, Review + Focus mode and modals.
+   Vanilla JS; state lives in LOS.store (localStorage). */
 (() => {
   "use strict";
+  const { dkey, addDays, uid, esc, today, nowMin, toMin, fmtDur, AREAS, HABIT_TEMPLATES, MOODS, ENERGY, MAX_TOP, store, sel, fx } = window.LOS;
+  const S = () => store.state;
+  const $ = (q, el = document) => el.querySelector(q);
+  const $$ = (q, el = document) => [...el.querySelectorAll(q)];
+  const save = () => store.save();
 
-  // ---------- Helpers ----------
-  const $ = (s, el = document) => el.querySelector(s);
-  const pad = (n) => String(n).padStart(2, "0");
-  const dkey = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
-  const uid = () => Math.random().toString(36).slice(2, 10);
-  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-  const WD = ["D", "S", "T", "Q", "Q", "S", "S"];
-  const WD_LONG = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
-
-  const icon = {
-    back: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>',
-    arrow: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12h16M14 6l6 6-6 6"/></svg>',
-    arrowSm: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>',
-    check: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
-    plus: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
-    x: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg>',
-    home: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
-    habits: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M15 17.5l2 2 4-4"/></svg>',
-    mood: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/></svg>',
-    goals: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/></svg>',
+  // ---------------------------------------------------------------- icons
+  const sv = (d, s = 18) => `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const I = {
+    now: sv('<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/>', 20),
+    today: sv('<rect x="3" y="4" width="18" height="17" rx="3"/><path d="M3 9h18M8 2v4M16 2v4"/>', 20),
+    inbox: sv('<path d="M3 13l3-8h12l3 8v6a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z"/><path d="M3 13h5l1 3h6l1-3h5"/>', 20),
+    habits: sv('<rect x="3" y="3" width="7" height="7" rx="2"/><rect x="14" y="3" width="7" height="7" rx="2"/><rect x="3" y="14" width="7" height="7" rx="2"/><path d="M15 17.5l2 2 4-4"/>', 20),
+    checkin: sv('<circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4.5 4.5 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/>', 20),
+    review: sv('<path d="M4 19V5M4 19h16M8 15l4-4 3 3 5-6"/>', 20),
+    gear: sv('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
+    check: sv('<path d="M5 12.5l4.5 4.5L19 7.5"/>', 14),
+    x: sv('<path d="M6 6l12 12M18 6L6 18"/>', 14),
+    play: sv('<path d="M7 5l12 7-12 7z" fill="currentColor"/>', 14),
+    plus: sv('<path d="M12 5v14M5 12h14"/>', 16),
   };
 
-  // ---------- Data ----------
-  const MOODS = [
-    { e: "😫", l: "Exausto" },
-    { e: "🙁", l: "Pra baixo" },
-    { e: "😐", l: "Neutro" },
-    { e: "🙂", l: "Bem" },
-    { e: "😂", l: "Feliz" },
-  ];
+  // ---------------------------------------------------------------- UI state (not persisted)
+  const ui = {
+    onbStep: 0, onbName: "", onbAreas: [], onbDump: "", onbPicks: [],
+    inboxTab: "inbox", inboxEnergy: 0,
+    habitEmoji: "💧",
+    modal: null,
+    focusOpen: false,
+    lastView: null,
+  };
+  const TABS = [["now", "Now"], ["today", "Today"], ["inbox", "Inbox"], ["habits", "Habits"], ["checkin", "Check-in"], ["review", "Review"]];
+  const EST_STEPS = [null, 5, 15, 25, 45, 60, 90];
+  const HABIT_EMOJIS = ["💧", "🏃", "🧘", "📓", "📚", "🎯", "💰", "💬", "😴", "🥗", "💊", "🌿", "☀️", "🎸", "🧹", "🦷"];
 
-  const AREAS = [
-    { id: "saude", e: "🏃", n: "Saúde", d: "Corpo e energia", bg: "#ffe4d4", rot: -4 },
-    { id: "mente", e: "🧘", n: "Mente", d: "Calma e foco", bg: "#e6e3ff", rot: 3 },
-    { id: "trabalho", e: "💼", n: "Trabalho", d: "Produtividade", bg: "#fdf1c7", rot: 2 },
-    { id: "financas", e: "💰", n: "Finanças", d: "Dinheiro em dia", bg: "#dff5e1", rot: -3 },
-    { id: "estudos", e: "📚", n: "Estudos", d: "Aprender sempre", bg: "#dbeefe", rot: -2 },
-    { id: "relacoes", e: "❤️", n: "Relações", d: "Pessoas queridas", bg: "#ffe0e6", rot: 4 },
-  ];
+  // ---------------------------------------------------------------- small helpers
+  const areaOf = (id) => AREAS[id] || null;
+  const areaColor = (id) => areaOf(id)?.color || "var(--mut)";
+  const relMin = (m) => (m <= 0 ? "now" : `in ${fmtDur(m)}`);
+  const energyOf = (n) => ENERGY.find((e) => e.id === n);
+  const greeting = () => { const h = new Date().getHours(); return h < 5 ? "Still up" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"; };
+  const weekday = () => new Date().toLocaleDateString("en-US", { weekday: "long" });
+  const firstName = () => esc(S().name || "friend");
 
-  const SUGGEST = {
-    saude: [["💧", "Beber 2L de água"], ["🏃", "Treinar 30 min"]],
-    mente: [["🧘", "Meditar 10 min"], ["📓", "Escrever no diário"]],
-    trabalho: [["🎯", "Definir 3 prioridades"], ["⏱️", "Bloco de foco 90 min"]],
-    financas: [["💰", "Registrar gastos"]],
-    estudos: [["📚", "Ler 20 páginas"]],
-    relacoes: [["💬", "Falar com alguém querido"]],
+  const toast = (html, { bonus = false, action = null, ms = 2600 } = {}) => {
+    const el = document.createElement("div");
+    el.className = `toast${bonus ? " bonus" : ""}`;
+    el.innerHTML = `<span>${html}</span>`;
+    if (action) {
+      const b = document.createElement("button");
+      b.textContent = action.label;
+      b.onclick = () => { action.fn(); el.remove(); };
+      el.appendChild(b);
+    }
+    const box = $("#toasts");
+    while (box.children.length >= 2) box.firstChild.remove(); // never more than 2 at once
+    box.appendChild(el);
+    setTimeout(() => el.remove(), action ? ms + 2000 : ms);
   };
 
-  const EMOJIS = ["💧", "🏃", "🧘", "📚", "🎯", "💰", "😴", "🥗", "📓", "🎸", "🚀", "🔥", "💬", "🌿", "☀️", "🧠"];
-
-  // ---------- State ----------
-  const STORE = "lifeos.v1";
-  const defaults = () => ({
-    onboarded: false,
-    step: 0,
-    name: "",
-    areas: [],
-    habits: [],
-    moods: {},
-    tasks: [],
-    goals: [],
-    tab: "home",
-  });
-  const load = () => {
+  const notify = (title, body) => {
     try {
-      const raw = localStorage.getItem(STORE);
-      return raw ? { ...defaults(), ...JSON.parse(raw) } : defaults();
-    } catch { return defaults(); }
-  };
-  let state = load();
-  const save = () => { try { localStorage.setItem(STORE, JSON.stringify(state)); } catch { /* sem storage: segue em memória */ } };
-
-  // estado transitório de UI (não persistido)
-  const ui = { mood: 3, newEmoji: "🔥", trayOpen: false, goalEmoji: "🚀" };
-
-  // ---------- Derived ----------
-  const today = () => dkey();
-  const isDone = (h, k = today()) => !!h.log[k];
-  const streak = (h) => {
-    let d = new Date();
-    if (!isDone(h, dkey(d))) d = addDays(d, -1);
-    let n = 0;
-    while (isDone(h, dkey(d))) { n++; d = addDays(d, -1); }
-    return n;
-  };
-  const dayRatio = (k) => {
-    if (!state.habits.length) return 0;
-    return state.habits.filter((h) => isDone(h, k)).length / state.habits.length;
+      if (S().settings.alerts && "Notification" in window && Notification.permission === "granted" && document.hidden) new Notification(title, { body });
+    } catch { /* ignore */ }
   };
 
-  // ---------- Toast ----------
-  let toastT;
-  const toast = (msg) => {
-    const t = $("#toast");
-    t.textContent = msg;
-    t.classList.add("show");
-    clearTimeout(toastT);
-    toastT = setTimeout(() => t.classList.remove("show"), 1800);
+  const NORMAL = ["Done. That counts. ✓", "Nice: one less thing in your head.", "Progress! ✓", "Look at you go.", "Boom. Ready for the next tiny thing?"];
+  const BONUS = ["✨ Bonus: you're on a roll today!", "✨ Your future self says thanks.", "✨ Legendary. Take a 2-minute victory lap.", "✨ That's momentum. Feel it?"];
+  const reward = (msg) => {
+    const bonus = Math.random() < 0.25; // variable rewards keep it interesting
+    if (S().settings.sound) fx.chime(bonus);
+    if (!S().settings.reduceMotion) fx.confetti(bonus ? 110 : 45);
+    const wins = sel.winsToday();
+    toast(bonus ? BONUS[(Math.random() * BONUS.length) | 0] : `${msg || NORMAL[(Math.random() * NORMAL.length) | 0]} <span class="mut">· ${wins} ${wins === 1 ? "win" : "wins"} today</span>`, { bonus });
   };
 
-  // ---------- Reusable pieces ----------
-  const goButton = (progress, action, disabled = false) => {
-    const r = 39, c = 2 * Math.PI * r;
-    return `
-      <button class="go" data-action="${action}" ${disabled ? "disabled" : ""} aria-label="Continuar">
-        <svg class="ring" width="84" height="84" viewBox="0 0 84 84">
-          <defs><linearGradient id="goGrad" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e5f76b"/><stop offset="1" stop-color="#f2b84a"/></linearGradient></defs>
-          <circle class="track" cx="42" cy="42" r="${r}"/>
-          <circle class="gbar" cx="42" cy="42" r="${r}" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - progress)}"/>
-        </svg>
-        <span class="core">${icon.arrow}</span>
-      </button>`;
+  // ---------------------------------------------------------------- task actions
+  const addTask = (title, extra = {}) => {
+    const t = { id: uid(), title: title.trim(), area: null, energy: null, est: null, status: "inbox", topDate: null, steps: [], note: "", doneAt: null, spent: 0, created: Date.now(), ...extra };
+    S().tasks.unshift(t);
+    return t;
+  };
+  const capture = (text) => {
+    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (!lines.length) return;
+    const made = lines.map((l) => addTask(l));
+    save();
+    render();
+    toast(`Captured ${made.length > 1 ? `${made.length} items` : `"${esc(made[0].title)}"`} to Inbox`, {
+      action: { label: "Undo", fn: () => { S().tasks = S().tasks.filter((t) => !made.includes(t)); save(); render(); } },
+    });
+  };
+  const makeTop = (id) => {
+    const t = sel.task(id);
+    if (!t) return false;
+    if (t.topDate === today()) return true;
+    if (sel.topToday().length >= MAX_TOP) {
+      toast(`You already have ${MAX_TOP} for today. Finish or drop one first. Less is more.`);
+      return false;
+    }
+    t.topDate = today();
+    if (t.status === "inbox" || t.status === "whenever") t.status = "ready";
+    if (!S().currentId || !sel.task(S().currentId) || sel.task(S().currentId).status === "done") S().currentId = t.id;
+    return true;
+  };
+  const completeTask = (id) => {
+    const t = sel.task(id);
+    if (!t) return;
+    if (S().focus?.taskId === id) endFocus({ silent: true });
+    t.status = "done";
+    t.doneAt = Date.now();
+    t.steps.forEach((s) => (s.done = true));
+    if (S().currentId === id) S().currentId = sel.topToday()[0]?.id || null;
+    save();
+    render();
+    reward();
+  };
+  const uncomplete = (id) => {
+    const t = sel.task(id);
+    if (!t) return;
+    t.status = "ready";
+    t.doneAt = null;
+  };
+  const later = (id) => {
+    const t = sel.task(id);
+    if (!t) return;
+    t.status = "whenever";
+    t.topDate = null;
+    if (S().currentId === id) S().currentId = null;
+    toast("Moved to Whenever. No guilt, it'll wait.");
   };
 
-  const onbHead = (step, total) => `
-    <div class="onb-head">
-      <button class="icon-btn" data-action="onb-back" aria-label="Voltar">${icon.back}</button>
-      <span class="count">${step} de ${total}</span>
-      <button class="pill-btn" data-action="onb-skip">Pular</button>
+  // ---------------------------------------------------------------- focus sessions
+  const focusElapsed = () => (S().focus ? (Date.now() - S().focus.start) / 60000 : 0);
+  const startFocus = (taskId, minutes, mode) => {
+    if (S().focus) endFocus({ silent: true });
+    S().focus = { taskId, start: Date.now(), dur: minutes, mode, ended: false, nudged: false };
+    S().currentId = taskId;
+    ui.focusOpen = true;
+    save();
+    render();
+  };
+  const endFocus = ({ silent = false } = {}) => {
+    const f = S().focus;
+    if (!f) return;
+    const min = Math.max(1, Math.round(focusElapsed()));
+    const t = sel.task(f.taskId);
+    if (t) {
+      t.spent = (t.spent || 0) + min;
+      const note = $("#focusNote");
+      if (note) t.note = note.value.trim();
+    }
+    S().sessions.push({ taskId: f.taskId, date: today(), min });
+    S().focus = null;
+    ui.focusOpen = false;
+    fx.noiseOff();
+    document.title = "Life OS";
+    save();
+    if (!silent) {
+      render();
+      toast(`Session saved · ${fmtDur(min)}${t?.note ? ". Your note is waiting for next time." : ""}`);
+    }
+  };
+
+  // ---------------------------------------------------------------- timers
+  const disc = (size, stroke, key) => {
+    const r = (size - stroke) / 2, c = 2 * Math.PI * r;
+    return `<div class="disc" style="width:${size}px;height:${size}px" data-disc="${key}" data-c="${c}">
+      <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+        <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--card-3)" stroke-width="${stroke}"/>
+        <circle class="rem" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--lime)" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="0" style="transition:stroke-dashoffset 1s linear"/>
+      </svg>
+      <div class="lbl"><div><b data-left-short></b><small>left</small></div></div>
     </div>`;
+  };
+  const timeLeftText = () => {
+    const f = S().focus;
+    if (!f) return "";
+    const left = f.dur - focusElapsed();
+    if (left > 0) return left < 1 ? "less than a minute left" : `${fmtDur(Math.ceil(left))} left`;
+    return `Time's up · +${fmtDur(Math.floor(-left))} over`;
+  };
 
-  // Mood dial (semicircle) ------------------------------------------
-  const DIAL = { cx: 170, cy: 182, R: 140 };
-  const polar = (deg, r) => {
-    const a = (deg * Math.PI) / 180;
-    return [DIAL.cx + r * Math.cos(a), DIAL.cy - r * Math.sin(a)];
+  const dayInfo = () => {
+    const start = 7 * 60, end = (S().settings.dayEnds || 22) * 60, n = nowMin();
+    const pct = Math.max(0, Math.min(1, (n - start) / (end - start)));
+    return { pct, left: end - n, end: S().settings.dayEnds || 22 };
   };
-  const valToDeg = (v) => 180 - v * 45;
-  const arcPath = (fromDeg, toDeg, r) => {
-    const [x1, y1] = polar(fromDeg, r), [x2, y2] = polar(toDeg, r);
-    return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
-  };
-  const dial = (v) => {
-    let ticks = "";
-    for (let i = 0; i <= 40; i++) {
-      const deg = 180 - i * 4.5, long = i % 5 === 0;
-      const [x1, y1] = polar(deg, 152), [x2, y2] = polar(deg, long ? 166 : 160);
-      ticks += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" stroke="#f2804a" stroke-opacity="${(0.25 + (i / 40) * 0.75).toFixed(2)}" stroke-width="${long ? 2.4 : 1.6}" stroke-linecap="round"/>`;
-    }
-    const [kx, ky] = polar(valToDeg(v), DIAL.R);
-    return `
-      <div class="dial" id="dial">
-        <svg viewBox="0 0 340 196" aria-label="Seletor de humor" role="slider" aria-valuemin="0" aria-valuemax="4" aria-valuenow="${v}" tabindex="0">
-          <defs>
-            <linearGradient id="dialGrad" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0" stop-color="#ffe4d4"/><stop offset="1" stop-color="#f2804a"/>
-            </linearGradient>
-          </defs>
-          ${ticks}
-          <path d="${arcPath(180, 0, DIAL.R)}" stroke="#f5f5f4" stroke-width="16" fill="none" stroke-linecap="round"/>
-          <path class="fill" d="${arcPath(180, Math.min(valToDeg(v), 179.5), DIAL.R)}" stroke="url(#dialGrad)" stroke-width="16" fill="none" stroke-linecap="round"/>
-          <circle class="knob" cx="${kx}" cy="${ky}" r="12" fill="#f2804a" stroke="#fff" stroke-width="4"/>
-          <circle cx="${DIAL.cx}" cy="${DIAL.cy}" r="4" fill="#f2804a"/>
-        </svg>
-      </div>`;
-  };
-  const moodStage = (v) => `
-    <div class="mood-stage" id="moodStage">
-      ${MOODS.map((m, i) => `<span class="mood-emo" data-action="mood-pick" data-v="${i}">${m.e}</span>`).join("")}
-    </div>
-    <span class="mood-label" id="moodLabel">${MOODS[v].l}</span>`;
 
-  const paintMood = (v) => {
-    ui.mood = v;
-    document.querySelectorAll(".mood-emo").forEach((el, i) => {
-      const off = i - v, dist = Math.abs(off);
-      el.style.transform = `translate(calc(-50% + ${off * 78}px), calc(-50% + ${dist * 14}px)) scale(${dist === 0 ? 1 : 0.55})`;
-      el.style.opacity = dist > 2 ? 0 : dist === 0 ? 1 : 0.75;
-      el.style.filter = dist === 0 ? "none" : "saturate(0.8)";
+  const tick = () => {
+    // day bar
+    const d = dayInfo();
+    const dbi = $(".daybar .track i");
+    if (dbi) dbi.style.width = `${d.pct * 100}%`;
+    const dbt = $("[data-daytext]");
+    if (dbt) dbt.innerHTML = dayText();
+
+    const f = S().focus;
+    if (!f) return;
+    const el = focusElapsed(), left = f.dur - el, frac = Math.max(0, left / f.dur);
+    $$("[data-disc]").forEach((dEl) => {
+      const c = Number(dEl.dataset.c);
+      const circ = $(".rem", dEl);
+      circ.setAttribute("stroke-dashoffset", String(c * (1 - frac)));
+      circ.setAttribute("stroke", left > 0 ? "var(--lime)" : "var(--pink)");
+      const s = $("[data-left-short]", dEl);
+      if (s) s.textContent = left > 0 ? (left < 1 ? "<1m" : fmtDur(Math.ceil(left)).replace(" min", "m")) : "0m";
     });
-    const lbl = $("#moodLabel");
-    if (lbl) lbl.textContent = MOODS[v].l;
-    const svg = $("#dial svg");
-    if (svg) {
-      const deg = valToDeg(v), [kx, ky] = polar(deg, DIAL.R);
-      $(".knob", svg).setAttribute("cx", kx);
-      $(".knob", svg).setAttribute("cy", ky);
-      $(".fill", svg).setAttribute("d", arcPath(180, Math.min(deg, 179.5), DIAL.R));
-      svg.setAttribute("aria-valuenow", v);
+    $$("[data-left]").forEach((e) => { e.textContent = timeLeftText(); e.classList.toggle("over", left <= 0); });
+    $$("[data-bar]").forEach((e) => (e.style.width = `${frac * 100}%`));
+    const t = sel.task(f.taskId);
+    document.title = `${left > 0 ? fmtDur(Math.ceil(left)) : "Time's up"} · ${t?.title || "Focus"}`;
+
+    if (left <= 0 && !f.ended) {
+      f.ended = true;
+      save();
+      if (S().settings.sound) fx.bell();
+      notify("Time's up", t ? `"${t.title}": keep going, take a break, or mark it done.` : "");
+      toast(f.mode === "5" ? "5 minutes done. You started! Keep going?" : "Time's up. Keep going, break, or done?", {
+        action: { label: f.mode === "5" ? "+20 min" : "+10 min", fn: () => { f.dur += f.mode === "5" ? 20 : 10; f.ended = false; f.mode = "full"; save(); render(); } },
+        ms: 6000,
+      });
+      if (!ui.focusOpen) render();
+    }
+    const hf = S().settings.hyperfocusMin;
+    if (hf && el >= (f.nudgeAt || hf) && !f.nudged) {
+      f.nudged = true;
+      save();
+      if (S().settings.sound) fx.bell();
+      notify("Time for a check", `You've been focused for ${fmtDur(el)}. Water, stretch, bathroom?`);
+      render();
     }
   };
+  setInterval(tick, 1000);
+  // refresh relative times every minute when the user isn't typing
+  setInterval(() => {
+    const a = document.activeElement;
+    if (!ui.modal && !(a && /INPUT|TEXTAREA|SELECT/.test(a.tagName))) render();
+  }, 60000);
 
-  const bindDial = () => {
-    const wrap = $("#dial");
-    if (!wrap) return;
-    const svg = $("svg", wrap);
-    const fromEvent = (e) => {
-      const pt = svg.createSVGPoint();
-      pt.x = e.clientX; pt.y = e.clientY;
-      const p = pt.matrixTransform(svg.getScreenCTM().inverse());
-      let deg = (Math.atan2(DIAL.cy - p.y, p.x - DIAL.cx) * 180) / Math.PI;
-      if (deg < 0) deg = p.x < DIAL.cx ? 180 : 0;
-      return Math.max(0, Math.min(4, Math.round((180 - deg) / 45)));
-    };
-    svg.addEventListener("pointerdown", (e) => {
-      wrap.classList.add("dragging");
-      svg.setPointerCapture(e.pointerId);
-      paintMood(fromEvent(e));
-    });
-    svg.addEventListener("pointermove", (e) => {
-      if (!wrap.classList.contains("dragging")) return;
-      const v = fromEvent(e);
-      if (v !== ui.mood) paintMood(v);
-    });
-    const end = () => wrap.classList.remove("dragging");
-    svg.addEventListener("pointerup", end);
-    svg.addEventListener("pointercancel", end);
-    svg.addEventListener("keydown", (e) => {
-      if (e.key === "ArrowLeft" || e.key === "ArrowDown") paintMood(Math.max(0, ui.mood - 1));
-      if (e.key === "ArrowRight" || e.key === "ArrowUp") paintMood(Math.min(4, ui.mood + 1));
-    });
+  const dayText = () => {
+    const d = dayInfo();
+    if (d.left <= 0) return `Day's done. Rest counts too. 🌙`;
+    if (nowMin() < 7 * 60) return `Early start · your day plan begins at <b>7:00</b>`;
+    return `<b>${Math.round(d.pct * 100)}%</b> of your day gone · <b>${fmtDur(d.left)}</b> left until ${d.end}:00`;
   };
 
-  // ---------- Onboarding screens ----------
-  const TOTAL = 3;
-
-  const welcome = () => `
-    <section class="screen onb">
-      <div class="hero" aria-hidden="true">
-        <div class="col" style="left:8%;height:230px"></div>
-        <div class="col" style="left:31%;height:320px"></div>
-        <div class="col" style="left:54%;height:200px"></div>
-        <div class="col" style="left:77%;height:300px"></div>
-        <svg class="wave" viewBox="0 0 400 120" preserveAspectRatio="none">
-          <defs><linearGradient id="waveGrad" x1="0" x2="1"><stop offset="0" stop-color="#f6c08a"/><stop offset=".5" stop-color="#f2804a"/><stop offset="1" stop-color="#ef4b45"/></linearGradient></defs>
-          <path d="M0 95 C 70 20, 140 10, 210 55 S 340 110, 400 20"/>
-        </svg>
-        <div class="bubble" style="left:6%;top:70px;width:56px;height:56px;background:#ffe4d4;font-size:26px">🧑🏻</div>
-        <div class="bubble" style="left:30%;top:120px;width:52px;height:52px;background:#dbeefe;font-size:24px;animation-delay:.6s,.15s">👩🏽</div>
-        <div class="bubble" style="left:52%;top:250px;width:50px;height:50px;background:#fdf1c7;font-size:24px;animation-delay:1.1s,.3s">🧔🏾</div>
-        <div class="bubble" style="left:76%;top:270px;width:44px;height:44px;background:#e6e3ff;font-size:20px;animation-delay:.3s,.45s">👱🏼‍♀️</div>
-        <span class="floaty" style="left:28%;top:56px;animation-delay:.2s,.5s">😍</span>
-        <span class="floaty" style="left:66%;top:60px;animation-delay:1.2s,.6s">💬</span>
-        <span class="floaty" style="left:82%;top:150px;animation-delay:.7s,.7s">🚀</span>
-        <span class="floaty" style="left:12%;top:225px;animation-delay:1.5s,.8s">🔥</span>
-        <span class="floaty" style="left:40%;top:210px;animation-delay:.4s,.9s">🥰</span>
-        <span class="tag l" style="--c:var(--blue);background:var(--blue);left:22%;top:40px">Foco</span>
-        <span class="tag r" style="--c:var(--orange);background:var(--orange);left:68%;top:110px">Treino</span>
-        <span class="tag l" style="--c:var(--red);background:var(--red);left:44%;top:315px;animation-delay:1s,1s">Leitura</span>
-        <span class="tag r" style="--c:var(--purple);background:var(--purple);left:8%;top:330px;animation-delay:.5s,1.1s">Sono</span>
-      </div>
-      <div class="welcome-text">
-        <h1>Bem-vindo ao<br>seu Life OS</h1>
-        <p>Hábitos, humor, tarefas e metas<br>num só lugar, no seu ritmo.</p>
-      </div>
-      <div class="welcome-foot">
-        <button class="cta" data-action="onb-next">Começar <span class="ring-ico">${icon.arrowSm}</span></button>
-      </div>
-    </section>`;
-
-  const stepName = () => `
-    <section class="screen onb">
-      ${onbHead(1, TOTAL)}
-      <div class="onb-body">
-        <h1 class="title">Como podemos<br>te chamar?</h1>
-        <p class="subtitle">Vamos personalizar sua rotina a partir daqui.</p>
-        <input class="big-input" id="nameInput" maxlength="24" placeholder="Seu nome" value="${esc(state.name)}" autocomplete="given-name" />
-      </div>
-      <div class="onb-foot">${goButton(1 / TOTAL, "onb-next")}</div>
-    </section>`;
-
-  const stepAreas = () => `
-    <section class="screen onb">
-      ${onbHead(2, TOTAL)}
-      <div class="onb-body">
-        <h1 class="title">Escolha suas<br>áreas de foco</h1>
-        <p class="subtitle">Selecione quantas quiser, sugerimos hábitos para cada uma.</p>
-        <div class="areas">
-          ${AREAS.map((a) => `
-            <button class="area ${state.areas.includes(a.id) ? "on" : ""}" style="--rot:${a.rot}deg;--bg:${a.bg}" data-action="toggle-area" data-id="${a.id}">
-              <span class="emo">${a.e}</span>
-              <span><b>${a.n}</b><br><span class="d">${a.d}</span></span>
-              <span class="check">${icon.check}</span>
-            </button>`).join("")}
-        </div>
-      </div>
-      <div class="onb-foot">${goButton(2 / TOTAL, "onb-next", !state.areas.length)}</div>
-    </section>`;
-
-  const stepMood = () => `
-    <section class="screen onb">
-      ${onbHead(3, TOTAL)}
-      <div class="onb-body">
-        <h1 class="title">Como você está<br>se sentindo hoje?</h1>
-        <p class="subtitle">O registro de humor ajuda você a entender<br>seu estado de espírito ao longo do tempo.</p>
-        ${moodStage(ui.mood)}
-        ${dial(ui.mood)}
-      </div>
-      <div class="onb-foot">${goButton(1, "onb-finish")}</div>
-    </section>`;
-
-  // ---------- App screens ----------
-  const nav = () => `
-    <nav class="nav" aria-label="Navegação">
-      ${[["home", "Hoje"], ["habits", "Hábitos"], ["mood", "Humor"], ["goals", "Metas"]]
-        .map(([t, l]) => `<button class="${state.tab === t ? "on" : ""}" data-action="tab" data-tab="${t}" aria-label="${l}">${icon[t]}</button>`).join("")}
-    </nav>`;
-
-  const weekStrip = () => {
-    const now = new Date();
-    const start = addDays(now, -now.getDay());
-    let out = "";
-    for (let i = 0; i < 7; i++) {
-      const d = addDays(start, i), k = dkey(d), r = dayRatio(k);
-      const isToday = k === today();
-      out += `<div class="day ${isToday ? "today" : ""}">${WD[i]}<b>${d.getDate()}</b><span class="dot ${r >= 1 ? "full" : r > 0 ? "some" : ""}"></span></div>`;
-    }
-    return `<div class="week">${out}</div>`;
+  // ---------------------------------------------------------------- schedule helpers
+  const todaySchedule = () => S().schedule.filter((e) => e.date === today()).sort((a, b) => a.time.localeCompare(b.time));
+  const nextEvent = () => {
+    const n = nowMin();
+    return todaySchedule().find((e) => toMin(e.time) + (e.dur || 30) > n) || null;
   };
 
-  const habitRow = (h) => {
-    const done = isDone(h), s = streak(h);
-    return `
-      <div class="card habit ${done ? "done" : ""}">
-        <span class="emo">${h.emoji}</span>
-        <div class="info"><b>${esc(h.name)}</b><small>${s ? `🔥 ${s} ${s === 1 ? "dia" : "dias"} seguidos` : "Comece hoje"}</small></div>
-        <button class="tick ${done ? "on" : ""}" data-action="toggle-habit" data-id="${h.id}" aria-label="Marcar ${esc(h.name)}">${icon.check}</button>
-      </div>`;
-  };
-
-  const taskRow = (t) => `
-    <div class="card task ${t.done ? "done" : ""}">
-      <button class="box" data-action="toggle-task" data-id="${t.id}" aria-label="Concluir tarefa">${icon.check}</button>
-      <span>${esc(t.text)}</span>
-      <button class="del" data-action="del-task" data-id="${t.id}" aria-label="Remover">${icon.x}</button>
-    </div>`;
-
-  const homeScreen = () => {
-    const total = state.habits.length;
-    const done = state.habits.filter((h) => isDone(h)).length;
-    const ratio = total ? done / total : 0;
-    const r = 36, c = 2 * Math.PI * r;
-    const m = state.moods[today()];
-    const tasks = state.tasks.filter((t) => t.date === today() || !t.done);
-    const openTasks = state.tasks.filter((t) => !t.done).length;
-    const dateStr = new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" });
-    const hour = new Date().getHours();
-    const greet = hour < 12 ? "Bom dia" : hour < 18 ? "Boa tarde" : "Boa noite";
-    const headline = ratio >= 1 ? "Dia completo! 🎉" : ratio >= 0.5 ? "Quase lá, continue!" : "Bora começar o dia";
-    return `
-      <section class="screen stagger">
-        <div class="top">
-          <div class="avatar">${esc((state.name || "?")[0].toUpperCase())}</div>
-          <div class="hello"><small>${dateStr}</small><h2>${greet}, ${esc(state.name || "você")}</h2></div>
-        </div>
-        ${weekStrip()}
-        <div class="today-card">
-          <div class="prog">
-            <svg width="84" height="84" viewBox="0 0 84 84"><circle class="t" cx="42" cy="42" r="${r}"/><circle class="b" cx="42" cy="42" r="${r}" stroke-dasharray="${c}" stroke-dashoffset="${c * (1 - ratio)}"/></svg>
-            <span>${Math.round(ratio * 100)}%</span>
-          </div>
-          <div><h3>${headline}</h3><p>${done} de ${total} hábitos concluídos hoje</p></div>
-        </div>
-        <div class="mini-row">
-          <button class="card mini" data-action="tab" data-tab="mood">
-            <span class="e">${m ? MOODS[m.v].e : "🫥"}</span>
-            <span><b>${m ? MOODS[m.v].l : "Registrar humor"}</b><br><small>${m ? "Humor de hoje" : "Como você está?"}</small></span>
-          </button>
-          <button class="mini dark" data-action="tab" data-tab="goals">
-            <span class="e">🎯</span>
-            <span><b>${state.goals.length} ${state.goals.length === 1 ? "meta" : "metas"}</b><br><small>${openTasks} tarefas abertas</small></span>
-          </button>
-        </div>
-        <div class="section-title">Hábitos de hoje <small>${done}/${total}</small></div>
-        <div class="list">
-          ${total ? state.habits.map(habitRow).join("") : `<div class="empty">Nenhum hábito ainda. Crie um na aba Hábitos.</div>`}
-        </div>
-        <div class="section-title">Tarefas <small>${openTasks} abertas</small></div>
-        <form class="add" data-form="task">
-          <input name="text" placeholder="Adicionar tarefa…" maxlength="80" autocomplete="off" />
-          <button class="plus" aria-label="Adicionar">${icon.plus}</button>
-        </form>
-        <div class="list" style="margin-top:10px">${tasks.map(taskRow).join("")}</div>
-      </section>`;
-  };
-
-  const habitsScreen = () => {
-    const now = new Date();
-    const days = [...Array(7)].map((_, i) => addDays(now, i - 6));
-    return `
-      <section class="screen stagger">
-        <div class="page-head"><h1>Hábitos</h1><span class="pill-btn">${state.habits.length} ativos</span></div>
-        <div class="section-title">Novo hábito</div>
-        <div>
-          <form class="add" data-form="habit">
-            <button type="button" class="emo-pick" data-action="tray">${ui.newEmoji}</button>
-            <input name="name" placeholder="Ex.: Caminhar 20 min" maxlength="40" autocomplete="off" />
-            <button class="plus" aria-label="Criar hábito">${icon.plus}</button>
-          </form>
-          ${ui.trayOpen ? `<div class="emoji-tray">${EMOJIS.map((e) => `<button class="${e === ui.newEmoji ? "on" : ""}" data-action="pick-emoji" data-e="${e}">${e}</button>`).join("")}</div>` : ""}
-        </div>
-        <div class="section-title">Últimos 7 dias</div>
-        <div class="list">
-          ${state.habits.length ? state.habits.map((h) => `
-            <div class="card habit">
-              <span class="emo">${h.emoji}</span>
-              <div class="info">
-                <b>${esc(h.name)}</b>
-                <small>🔥 ${streak(h)} · ${days.filter((d) => isDone(h, dkey(d))).length}/7 na semana</small>
-                <div class="grid7">${days.map((d) => {
-                  const k = dkey(d);
-                  return `<i class="${isDone(h, k) ? "on" : ""} ${k === today() ? "today" : ""}" title="${WD_LONG[d.getDay()]}">${WD[d.getDay()]}</i>`;
-                }).join("")}</div>
-              </div>
-              <button class="del" data-action="del-habit" data-id="${h.id}" aria-label="Remover hábito">${icon.x}</button>
-            </div>`).join("") : `<div class="empty">Crie seu primeiro hábito acima ✨</div>`}
-        </div>
-      </section>`;
-  };
-
-  const moodScreen = () => {
-    const existing = state.moods[today()];
-    if (existing && ui.moodInit !== today()) { ui.mood = existing.v; ui.moodInit = today(); }
-    const now = new Date();
-    const days = [...Array(14)].map((_, i) => addDays(now, i - 13));
-    return `
-      <section class="screen stagger">
-        <div>
-          <h1 class="title" style="margin-top:8px">Como você está<br>se sentindo hoje?</h1>
-          <p class="subtitle">Arraste no arco ou toque num emoji.</p>
-        </div>
-        <div>${moodStage(ui.mood)}${dial(ui.mood)}</div>
-        <textarea class="note" id="moodNote" maxlength="200" placeholder="Quer anotar algo sobre o seu dia? (opcional)">${esc(existing?.note || "")}</textarea>
-        <div style="margin-top:18px">${goButton(existing ? 1 : 0.5, "save-mood")}</div>
-        <div class="section-title">Últimos 14 dias</div>
-        <div class="card history">
-          ${days.map((d) => {
-            const m = state.moods[dkey(d)];
-            return `<div class="h"><em>${m ? MOODS[m.v].e : ""}</em><i class="${m ? "" : "none"}" style="height:${m ? 14 + m.v * 14 : 8}px"></i><span>${d.getDate()}</span></div>`;
-          }).join("")}
-        </div>
-      </section>`;
-  };
-
-  const goalsScreen = () => `
-    <section class="screen stagger">
-      <div class="page-head"><h1>Metas</h1><span class="pill-btn">${state.goals.filter((g) => g.progress >= 100).length}/${state.goals.length} concluídas</span></div>
-      <div class="section-title">Nova meta</div>
-      <form class="add" data-form="goal">
-        <button type="button" class="emo-pick" data-action="cycle-goal-emoji">${ui.goalEmoji}</button>
-        <input name="title" placeholder="Ex.: Correr 5 km" maxlength="40" autocomplete="off" />
-        <button class="plus" aria-label="Criar meta">${icon.plus}</button>
-      </form>
-      <div class="section-title">Em andamento</div>
-      <div class="list">
-        ${state.goals.length ? state.goals.map((g) => `
-          <div class="card goal">
-            <div class="goal-top">
-              <span class="emo">${g.emoji}</span>
-              <div><b>${esc(g.title)}</b><small>${g.progress >= 100 ? "Concluída 🎉" : "Em progresso"}</small></div>
-              <span class="pct">${g.progress}%</span>
-            </div>
-            <div class="bar"><i style="width:${g.progress}%"></i></div>
-            <div class="goal-actions">
-              <button class="pill-btn" data-action="goal-step" data-id="${g.id}" data-d="-10">−10%</button>
-              <button class="pill-btn" data-action="goal-step" data-id="${g.id}" data-d="10" style="background:var(--lime)">+10%</button>
-              <button class="del" data-action="del-goal" data-id="${g.id}" aria-label="Remover meta">${icon.x}</button>
-            </div>
-          </div>`).join("") : `<div class="empty">Defina uma meta para acompanhar 🎯</div>`}
-      </div>
-    </section>`;
-
-  // ---------- Render ----------
-  let lastView = null;
-  const render = () => {
-    const app = $("#app");
-    let html;
-    if (!state.onboarded) {
-      html = [welcome, stepName, stepAreas, stepMood][state.step]();
+  // ================================================================= ONBOARDING
+  const onboarding = () => {
+    const st = ui.onbStep, total = 4;
+    const dots = `<div class="progress-dots">${[...Array(total)].map((_, i) => `<i class="${i <= st ? "on" : ""}"></i>`).join("")}</div>`;
+    const dumpLines = ui.onbDump.split("\n").map((l) => l.trim()).filter(Boolean);
+    let body = "";
+    if (st === 0) {
+      body = `
+        <span class="count">01 / 04</span>
+        <h1>Hey. This is your <span>Life OS.</span></h1>
+        <p class="lead">Built for brains that juggle a lot. One thing at a time, no guilt, and no streaks that reset to zero. Setup takes 30 seconds.</p>
+        <input class="field" id="onbName" placeholder="What should we call you?" maxlength="24" value="${esc(ui.onbName)}" autocomplete="given-name" />`;
+    } else if (st === 1) {
+      body = `
+        <span class="count">02 / 04</span>
+        <h1>What matters <span>right now?</span></h1>
+        <p class="lead">Pick a few. We'll add tiny starter habits, each with a "mini" version for low-energy days. You can change everything later.</p>
+        <div class="areas">${Object.entries(AREAS).map(([id, a]) => `
+          <button class="area ${ui.onbAreas.includes(id) ? "on" : ""}" style="--ac:${a.color}" data-action="onb-area" data-id="${id}">
+            <span class="e">${a.emoji}</span><b>${a.name}</b>
+            <small>${HABIT_TEMPLATES[id].map((h) => h[1]).join(" · ")}</small>
+          </button>`).join("")}</div>`;
+    } else if (st === 2) {
+      body = `
+        <span class="count">03 / 04</span>
+        <h1>Brain dump. <span>Everything.</span></h1>
+        <p class="lead">Type whatever's on your mind, one thing per line. Don't organize, just get it out of your head.</p>
+        <textarea class="field" id="onbDump" placeholder="Reply to Ana's email&#10;Book dentist&#10;Finish the proposal&#10;Buy cat food">${esc(ui.onbDump)}</textarea>`;
     } else {
-      html = { home: homeScreen, habits: habitsScreen, mood: moodScreen, goals: goalsScreen }[state.tab]() + nav();
+      body = `
+        <span class="count">04 / 04</span>
+        <h1>Pick up to <span>3</span> for today.</h1>
+        <p class="lead">Only three. Everything else waits safely in your Inbox.</p>
+        ${dumpLines.length ? `<div class="pick-list">${dumpLines.map((l, i) => `
+          <button class="trow ${ui.onbPicks.includes(i) ? "cur" : ""}" data-action="onb-pick" data-i="${i}">
+            <span class="check ${ui.onbPicks.includes(i) ? "on" : ""}">${I.check}</span><span class="t"><span>${esc(l)}</span></span>
+          </button>`).join("")}</div>` : `<div class="c empty" style="margin-top:24px">Nothing dumped, and that's fine. Capture anytime with <span class="mono">⌘K</span> or <span class="mono">/</span>.</div>`}`;
     }
-    const view = state.onboarded ? state.tab : `onb${state.step}`;
-    const same = view === lastView;
-    const scroll = same ? ($(".screen")?.scrollTop || 0) : 0;
-    app.innerHTML = html;
-    if (same) { const sc = $(".screen"); sc.classList.add("static"); sc.scrollTop = scroll; }
-    lastView = view;
-    if ($("#moodStage")) { paintMood(ui.mood); bindDial(); }
-    const ni = $("#nameInput");
-    if (ni) {
-      ni.focus();
-      ni.addEventListener("keydown", (e) => { if (e.key === "Enter") act("onb-next"); });
-    }
+    return `
+      <div class="onb"><div class="onb-card view">
+        ${body}
+        <div class="onb-foot">
+          ${dots}
+          <div class="row">
+            ${st > 0 ? `<button class="btn quiet" data-action="onb-back">Back</button>` : `<button class="btn quiet" data-action="onb-skip">Skip setup</button>`}
+            <button class="btn primary big" data-action="onb-next">${st === 3 ? "Start my day →" : st === 0 ? "Let's go →" : "Next →"}</button>
+          </div>
+        </div>
+      </div></div>`;
   };
 
-  // ---------- Actions ----------
   const finishOnboarding = () => {
-    if (!state.name) state.name = "você";
-    if (!state.habits.length) {
-      const areas = state.areas.length ? state.areas : ["saude", "mente"];
-      areas.forEach((a) => (SUGGEST[a] || []).forEach(([e, n]) => state.habits.push({ id: uid(), emoji: e, name: n, log: {} })));
-    }
-    if (!state.goals.length) state.goals.push({ id: uid(), emoji: "🚀", title: "Manter a rotina por 30 dias", progress: 0 });
-    state.moods[today()] = { v: ui.mood, note: "" };
-    ui.moodInit = today();
-    state.onboarded = true;
-    state.tab = "home";
+    const s = S();
+    s.name = ui.onbName.trim() || s.name || "";
+    s.areas = [...ui.onbAreas];
+    ui.onbAreas.forEach((a) => HABIT_TEMPLATES[a].forEach(([e, n, m]) => s.habits.push({ id: uid(), emoji: e, name: n, mini: m, area: a, log: {} })));
+    const lines = ui.onbDump.split("\n").map((l) => l.trim()).filter(Boolean);
+    const byIndex = {};
+    // addTask prepends, so add in reverse to keep the typed order
+    for (let i = lines.length - 1; i >= 0; i--) byIndex[i] = addTask(lines[i]);
+    ui.onbPicks.forEach((i) => byIndex[i] && makeTop(byIndex[i].id));
+    s.onboarded = true;
+    s.view = "now";
     save();
     render();
-    toast(`Tudo pronto, ${state.name}! ✨`);
+    toast(`Welcome${s.name ? `, ${esc(s.name)}` : ""}. One thing at a time. ✨`);
   };
 
-  const act = (action, el) => {
-    const id = el?.dataset.id;
-    switch (action) {
-      case "onb-next":
-        if (state.step === 1) {
-          const v = $("#nameInput").value.trim();
-          if (!v) { toast("Digite seu nome 🙂"); return; }
-          state.name = v;
-        }
-        state.step = Math.min(3, state.step + 1);
-        break;
+  // ================================================================= SHELL
+  const shell = (inner) => {
+    const inboxN = sel.inbox().length;
+    return `
+      <div class="shell">
+        <header class="topbar">
+          <div class="logo"><i></i>life/os</div>
+          <nav class="tabs" aria-label="Main">
+            ${TABS.map(([id, l]) => `<button class="${S().view === id ? "on" : ""}" data-action="nav" data-view="${id}">${I[id]}<span>${l}</span>${id === "inbox" && inboxN ? `<span class="badge">${inboxN}</span>` : ""}</button>`).join("")}
+          </nav>
+          <form class="capture" data-form="capture" role="search">
+            <span class="mut">＋</span>
+            <input id="capture" name="text" placeholder="Capture anything… (Enter to save)" autocomplete="off" maxlength="140" aria-label="Quick capture" />
+            <kbd>⌘K</kbd>
+          </form>
+          <button class="icon-btn" data-action="settings" aria-label="Settings">${I.gear}</button>
+        </header>
+        <div class="daybar"><span data-daytext>${dayText()}</span><div class="track"><i style="width:${dayInfo().pct * 100}%"></i></div></div>
+        ${inner}
+      </div>`;
+  };
+
+  // shared: top 3 card
+  const top3Card = () => {
+    const active = sel.topToday();
+    const doneTop = S().tasks.filter((t) => t.topDate === today() && t.status === "done");
+    const cur = sel.current();
+    const free = MAX_TOP - active.length;
+    return `
+      <div class="c">
+        <h3>Today's top ${MAX_TOP} <span class="r mono">${doneTop.length}/${active.length + doneTop.length || MAX_TOP}</span></h3>
+        <div class="top3">
+          ${active.map((t) => `
+            <div class="trow ${cur?.id === t.id ? "cur" : ""}">
+              <button class="check" data-action="done" data-id="${t.id}" aria-label="Mark done">${I.check}</button>
+              <button class="t" data-action="set-current" data-id="${t.id}">
+                <span>${esc(t.title)}</span>
+                <small>${[t.area ? `<span class="dot" style="background:${areaColor(t.area)}"></span> ${areaOf(t.area).name}` : "", t.est ? `~${fmtDur(t.est)}` : "", t.steps.length ? `${t.steps.filter((s) => s.done).length}/${t.steps.length} steps` : ""].filter(Boolean).join(" · ") || "Tap to focus on this"}</small>
+              </button>
+              <button class="tiny" data-action="drop-top" data-id="${t.id}" title="Remove from today">${I.x}</button>
+            </div>`).join("")}
+          ${doneTop.map((t) => `
+            <div class="trow done">
+              <button class="check on" data-action="undone" data-id="${t.id}" aria-label="Mark not done">${I.check}</button>
+              <span class="t"><span>${esc(t.title)}</span></span>
+            </div>`).join("")}
+          ${free > 0 ? [...Array(free)].map(() => `<button class="slot-empty" data-action="pick">+ Add a priority <span class="mono">(${free} left)</span></button>`).slice(0, 1).join("") : ""}
+        </div>
+      </div>`;
+  };
+
+  const energyCard = () => {
+    const e = sel.energy();
+    if (!e) {
+      return `
+        <div class="c">
+          <h3>Energy check <span class="r pill vio">10 sec</span></h3>
+          <p style="margin-bottom:12px">How's your energy right now?</p>
+          <div class="energy-pick">${ENERGY.map((x) => `<button data-action="energy" data-v="${x.id}"><span class="e">${x.e}</span><b>${x.l}</b><small>${x.hint}</small></button>`).join("")}</div>
+        </div>`;
+    }
+    const fit = sel.energyFit();
+    const en = energyOf(e);
+    return `
+      <div class="c">
+        <h3>Good fit for your energy <button class="r tagbtn" data-action="energy-reset">${en.e} ${en.l} · change</button></h3>
+        ${fit.length ? `<div class="mini-list">${fit.map((t) => `
+          <button class="mini-item" data-action="add-top" data-id="${t.id}">
+            <span class="dot" style="background:${areaColor(t.area)}"></span>
+            <span class="t">${esc(t.title)}</span>
+            ${t.est ? `<span class="mut mono" style="font-size:12px">${t.est}m</span>` : ""}
+            <span class="add">+ Today</span>
+          </button>`).join("")}</div>`
+          : `<div class="empty">${e === 1 ? "Low energy is okay. Try one habit's <b>mini</b> version, or just rest." : "Nothing waiting. Capture something with ⌘K."}</div>`}
+      </div>`;
+  };
+
+  const nextUpCard = () => {
+    const ev = nextEvent();
+    const n = nowMin();
+    return `
+      <div class="c">
+        <h3>Next up <button class="r tagbtn" data-action="nav" data-view="today">Plan</button></h3>
+        ${ev ? `<div class="next-up"><span class="when">${relMin(toMin(ev.time) - n)}</span><div><b style="font-weight:500">${esc(ev.label)}</b><br><small class="mut mono">${ev.time} · ${fmtDur(ev.dur || 30)}</small></div></div>`
+          : `<div class="empty" style="padding:8px">Nothing scheduled. <button class="tagbtn" data-action="nav" data-view="today">Add a block</button></div>`}
+      </div>`;
+  };
+
+  const winsCard = () => {
+    const w = sel.winsToday();
+    const done = sel.doneToday();
+    return `
+      <div class="c">
+        <h3>Wins today</h3>
+        <div class="wins"><b>${w}</b><span class="mut">${w ? "things done. That counts." : "Every tiny thing counts. Even a mini habit."}</span></div>
+        ${done.length ? `<div class="mini-list" style="margin-top:12px">${done.slice(0, 4).map((t) => `<div class="mini-item"><span style="color:var(--lime)">${I.check}</span><span class="t">${esc(t.title)}</span></div>`).join("")}</div>` : ""}
+      </div>`;
+  };
+
+  // ================================================================= NOW
+  const nowView = () => {
+    const t = sel.current();
+    const f = S().focus;
+    const ev = nextEvent();
+    const top = sel.topToday();
+    const sub = [`${sel.winsToday()} wins today`, `${top.length} of ${MAX_TOP} priorities left`, ev ? `next: ${esc(ev.label)} ${relMin(toMin(ev.time) - nowMin())}` : ""].filter(Boolean).join(" · ");
+    const nudge = f && f.nudged ? `
+      <div class="nudge">🧠 <span class="sp">You've been focused for <b>${fmtDur(focusElapsed())}</b>. Water, stretch, bathroom? Hyperfocus is a superpower, but bodies need breaks.</span>
+        <button class="btn sm ghost" data-action="focus-stop">Take a break</button>
+        <button class="btn sm quiet" data-action="nudge-ok">Keep going</button></div>` : "";
+
+    let card;
+    if (!t) {
+      card = `
+        <div class="c now-card">
+          <div class="meta"><span class="pill">Right now</span></div>
+          <div class="now-title">Nothing picked for right now.</div>
+          <p class="mut" style="margin-top:10px">Choose one thing. Just one. Everything else can wait.</p>
+          <div class="now-actions">
+            <button class="btn primary big" data-action="pick">Pick one thing</button>
+            <button class="btn ghost" data-action="focus-capture">Capture a thought</button>
+          </div>
+        </div>`;
+    } else {
+      const step = t.steps.find((s) => !s.done);
+      const stepIdx = step ? t.steps.indexOf(step) + 1 : 0;
+      const running = f && f.taskId === t.id;
+      const area = areaOf(t.area);
+      card = `
+        <div class="c now-card" style="--area:${area ? area.color : "var(--lime)"}">
+          <div class="meta">
+            <span class="pill">Right now</span>
+            ${area ? `<span class="pill gray"><span class="dot" style="background:${area.color}"></span> ${area.name}</span>` : ""}
+            ${t.est ? `<span class="pill gray">~${fmtDur(t.est)}</span>` : ""}
+            ${t.energy ? `<span class="pill gray">${energyOf(t.energy).e} ${energyOf(t.energy).l} energy</span>` : ""}
+          </div>
+          <div class="now-title">${esc(t.title)}</div>
+          <div class="next-step">
+            ${step ? `
+              <button class="check sq" data-action="step-done" data-id="${t.id}" data-step="${step.id}" aria-label="Step done">${I.check}</button>
+              <div class="grow"><div class="lbl">Next tiny step · ${stepIdx} of ${t.steps.length}</div><div class="txt">${esc(step.text)}</div></div>`
+            : `<div class="grow"><div class="lbl">First tiny step</div><div class="txt mut">${t.steps.length ? "All steps done. Finish it off?" : "Not sure where to start? Make it tiny."}</div></div>
+               ${t.steps.length ? "" : `<button class="btn sm ghost" data-action="stuck" data-id="${t.id}">Break it down</button>`}`}
+          </div>
+          ${running ? `
+            <div class="running">
+              ${disc(64, 7, "now")}
+              <div class="grow"><b data-left>${timeLeftText()}</b><span class="mut"> · ${f.mode === "5" ? "just 5 minutes" : "focus session"}</span><div class="bar"><i data-bar style="width:100%"></i></div></div>
+              <button class="btn sm ghost" data-action="focus-open">Open</button>
+              <button class="btn sm quiet" data-action="focus-stop">Stop</button>
+            </div>` : ""}
+          <label class="leftoff">📌 <span style="white-space:nowrap">Where I left off:</span>
+            <input data-note="${t.id}" value="${esc(t.note)}" placeholder="A quick note for future you…" maxlength="140" /></label>
+          <div class="now-actions">
+            ${running ? `<button class="btn primary big" data-action="done" data-id="${t.id}">✓ Done</button>`
+              : `<button class="btn primary big" data-action="focus-5" data-id="${t.id}">${I.play} Just 5 minutes</button>
+                 <button class="btn ghost" data-action="focus-full" data-id="${t.id}">Focus ${fmtDur(t.est || 25)}</button>`}
+            <button class="btn ghost" data-action="stuck" data-id="${t.id}">😵‍💫 I'm stuck</button>
+            <span class="sp"></span>
+            <button class="btn quiet" data-action="later" data-id="${t.id}">Not now</button>
+            ${running ? "" : `<button class="btn ghost" data-action="done" data-id="${t.id}">✓ Done</button>`}
+          </div>
+        </div>`;
+    }
+    return `
+      <section class="view" data-view="now">
+        <div class="hero"><div><h1>${greeting()}, ${firstName()}. <span>One thing</span> at a time.</h1><p>${sub}</p></div></div>
+        ${nudge}
+        <div class="grid g-now">
+          <div class="stack">${card}${top3Card()}</div>
+          <div class="stack">${energyCard()}${nextUpCard()}${winsCard()}
+            <button class="btn quiet" data-action="reset-day" style="align-self:flex-start">↺ Reset my day</button>
+          </div>
+        </div>
+      </section>`;
+  };
+
+  // ================================================================= TODAY
+  const habitRow = (h, compact = false) => {
+    const v = sel.habitDone(h);
+    const n = sel.habitCount(h, 7);
+    const days = [...Array(7)].map((_, i) => addDays(new Date(), i - 6));
+    return `
+      <div class="habit ${compact ? "compact" : ""}">
+        <span class="emo">${h.emoji}</span>
+        <div class="info">
+          <b>${esc(h.name)}</b>
+          <small>${n} of last 7 days${h.mini && !compact ? ` · mini: ${esc(h.mini)}` : ""}</small>
+          ${compact ? "" : `<div class="week7">${days.map((d) => { const k = dkey(d); return `<i class="${h.log[k] || ""} ${k === today() ? "today" : ""}" title="${d.toLocaleDateString("en-US", { weekday: "short" })}"></i>`; }).join("")}</div>`}
+        </div>
+        <div class="hbtns">
+          <button class="hbtn ${v === "full" ? "on" : ""}" data-action="habit" data-id="${h.id}" data-v="full">${v === "full" ? "✓ Done" : "Done"}</button>
+          ${h.mini ? `<button class="hbtn mini ${v === "mini" ? "on" : ""}" data-action="habit" data-id="${h.id}" data-v="mini" title="${esc(h.mini)}">${v === "mini" ? "✓ Mini" : "Mini"}</button>` : ""}
+          ${compact ? "" : `<button class="tiny" data-action="del-habit" data-id="${h.id}" aria-label="Delete habit">${I.x}</button>`}
+        </div>
+      </div>`;
+  };
+
+  const todayView = () => {
+    const topAll = S().tasks.filter((t) => t.topDate === today());
+    const topDone = topAll.filter((t) => t.status === "done").length;
+    const hs = S().habits;
+    const hDone = hs.filter((h) => h.log[today()]).length;
+    const denom = topAll.length + hs.length;
+    const pct = denom ? Math.round(((topDone + hDone) / denom) * 100) : 0;
+    const focusMin = S().sessions.filter((s) => s.date === today()).reduce((a, s) => a + s.min, 0) + (S().focus ? Math.round(focusElapsed()) : 0);
+    const week = [...Array(7)].map((_, i) => dkey(addDays(new Date(), -i)));
+    const cons = hs.length ? Math.round((week.reduce((a, k) => a + sel.dayHabitRatio(k), 0) / 7) * 100) : 0;
+    const moods = week.map((k) => S().checkins[k]?.mood).filter((m) => m != null);
+    const moodAvg = moods.length ? (moods.reduce((a, b) => a + b, 0) / moods.length + 1).toFixed(1) : "–";
+
+    const n = nowMin();
+    const items = todaySchedule();
+    let placedNow = false, tl = "";
+    items.forEach((e) => {
+      const st = toMin(e.time), en = st + (e.dur || 30);
+      if (!placedNow && st > n) { tl += `<div class="nowline">now · ${new Date().toTimeString().slice(0, 5)}</div>`; placedNow = true; }
+      const past = en <= n, live = st <= n && en > n;
+      tl += `<div class="ev ${past ? "past" : ""}" style="--c:${areaColor(e.area)}">
+        <span class="time">${e.time}</span>
+        <span class="t">${esc(e.label)}<small>${fmtDur(e.dur || 30)}${e.area ? ` · ${areaOf(e.area).name}` : ""}</small></span>
+        ${past ? "" : `<span class="rel">${live ? "now" : relMin(st - n)}</span>`}
+        <button class="tiny x" data-action="del-event" data-id="${e.id}" aria-label="Remove">${I.x}</button>
+      </div>`;
+    });
+    if (!placedNow) tl += `<div class="nowline">now · ${new Date().toTimeString().slice(0, 5)}</div>`;
+
+    return `
+      <section class="view" data-view="today">
+        <div class="hero">
+          <div><h1>${weekday()}. <span>${pct}%</span> of today's plan done.</h1>
+            <p>${topDone}/${topAll.length || 0} priorities · ${hDone}/${hs.length} habits · ${sel.inbox().length} in inbox</p></div>
+          <div class="row" style="gap:28px">
+            <div class="stat"><small>Habit consistency (7d)</small><b>${cons}%</b></div>
+            <div class="stat"><small>Mood (7d)</small><b>${moodAvg}<span class="mut" style="font-size:16px">/5</span></b></div>
+            <div class="stat"><small>Focus today</small><b class="mono">${fmtDur(focusMin)}</b></div>
+          </div>
+        </div>
+        <div class="grid g-3">
+          <div class="stack">
+            ${top3Card()}
+            <div class="c">
+              <h3>Time blocks <span class="r mut">see time, not just a list</span></h3>
+              <div class="timeline">${tl}</div>
+              ${items.length ? "" : `<p class="mut" style="font-size:13px;margin-top:4px">Add a few blocks so time feels real.</p>`}
+              <form class="inline-form" data-form="event">
+                <input class="field" type="time" name="time" required value="${String(Math.min(23, new Date().getHours() + 1)).padStart(2, "0")}:00" />
+                <input class="field" name="label" placeholder="What?" required maxlength="60" />
+                <select class="field" name="dur">${[15, 30, 45, 60, 90, 120].map((d) => `<option value="${d}" ${d === 30 ? "selected" : ""}>${fmtDur(d)}</option>`).join("")}</select>
+                <select class="field" name="area"><option value="">Area</option>${Object.entries(AREAS).map(([id, a]) => `<option value="${id}">${a.name}</option>`).join("")}</select>
+                <button class="btn sm primary">Add</button>
+              </form>
+            </div>
+          </div>
+          <div class="c">
+            <h3>Habits <span class="r mono">${hDone}/${hs.length}</span></h3>
+            ${hs.length ? hs.map((h) => habitRow(h, true)).join("") : `<div class="empty">No habits yet. <button class="tagbtn" data-action="nav" data-view="habits">Add one</button></div>`}
+            <p class="mut" style="font-size:12px;margin-top:6px">Mini counts. Missing a day never resets anything.</p>
+          </div>
+          <div class="stack">${energyCard()}${winsCard()}
+            <button class="btn quiet" data-action="reset-day" style="align-self:flex-start">↺ Reset my day</button></div>
+        </div>
+      </section>`;
+  };
+
+  // ================================================================= INBOX
+  const cycleLabel = {
+    area: (t) => (t.area ? `<span class="dot" style="background:${areaColor(t.area)}"></span>${areaOf(t.area).name}` : "+ area"),
+    energy: (t) => (t.energy ? `${energyOf(t.energy).e} ${energyOf(t.energy).l}` : "+ energy"),
+    est: (t) => (t.est ? `⏱ ${fmtDur(t.est)}` : "+ time"),
+  };
+  const inboxView = () => {
+    const tab = ui.inboxTab;
+    let list = tab === "inbox" ? sel.inbox() : tab === "ready" ? S().tasks.filter((t) => t.status === "ready") : tab === "whenever" ? sel.whenever() : S().tasks.filter((t) => t.status === "done").sort((a, b) => b.doneAt - a.doneAt).slice(0, 40);
+    if (ui.inboxEnergy) list = list.filter((t) => t.energy === ui.inboxEnergy);
+    const counts = { inbox: sel.inbox().length, ready: S().tasks.filter((t) => t.status === "ready").length, whenever: sel.whenever().length };
+    return `
+      <section class="view" data-view="inbox">
+        <div class="hero"><div><h1>Inbox. <span>Out of your head.</span></h1><p>Capture without thinking. Sort later, or never. Nothing here is "overdue".</p></div></div>
+        <div class="grid g-now">
+          <div class="c">
+            <div class="row" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:16px">
+              <div class="seg">
+                ${[["inbox", "Inbox"], ["ready", "Ready"], ["whenever", "Whenever"], ["done", "Done"]].map(([id, l]) => `<button class="${tab === id ? "on" : ""}" data-action="inbox-tab" data-v="${id}">${l}${counts[id] != null ? ` <span class="mono mut">${counts[id]}</span>` : ""}</button>`).join("")}
+              </div>
+              <div class="seg">
+                <button class="${!ui.inboxEnergy ? "on" : ""}" data-action="inbox-energy" data-v="0">Any</button>
+                ${ENERGY.map((e) => `<button class="${ui.inboxEnergy === e.id ? "on" : ""}" data-action="inbox-energy" data-v="${e.id}" title="${e.l} energy">${e.e}</button>`).join("")}
+              </div>
+            </div>
+            ${list.length ? list.map((t) => `
+              <div class="task-card">
+                ${tab === "done" ? `<button class="check on" data-action="undone" data-id="${t.id}">${I.check}</button>` : `<button class="check" data-action="done" data-id="${t.id}" aria-label="Done">${I.check}</button>`}
+                <div class="t">
+                  <b>${esc(t.title)}</b>
+                  <div class="tags">
+                    ${t.topDate === today() && t.status !== "done" ? `<span class="pill">★ Today</span>` : ""}
+                    ${tab === "done" ? "" : `
+                    <button class="tagbtn" data-action="cycle" data-k="area" data-id="${t.id}">${cycleLabel.area(t)}</button>
+                    <button class="tagbtn" data-action="cycle" data-k="energy" data-id="${t.id}">${cycleLabel.energy(t)}</button>
+                    <button class="tagbtn" data-action="cycle" data-k="est" data-id="${t.id}">${cycleLabel.est(t)}</button>`}
+                    ${t.steps.length ? `<span class="pill gray">${t.steps.filter((s) => s.done).length}/${t.steps.length} steps</span>` : ""}
+                  </div>
+                </div>
+                ${tab === "done" ? "" : `<div class="acts">
+                  ${t.topDate === today() ? "" : `<button class="tiny lime" data-action="add-top" data-id="${t.id}">★ Today</button>`}
+                  <button class="tiny" data-action="stuck" data-id="${t.id}">Break down</button>
+                  ${t.status === "inbox" ? `<button class="tiny" data-action="ready" data-id="${t.id}">Ready</button>` : ""}
+                  ${t.status !== "whenever" ? `<button class="tiny" data-action="later" data-id="${t.id}">Whenever</button>` : ""}
+                  <button class="tiny" data-action="del-task" data-id="${t.id}" aria-label="Delete">${I.x}</button>
+                </div>`}
+              </div>`).join("") : `<div class="empty">${tab === "inbox" ? "Inbox zero. Your head should feel lighter. 🌬️" : "Nothing here."}</div>`}
+          </div>
+          <div class="stack">
+            <div class="c">
+              <h3>Brain dump</h3>
+              <form data-form="dump">
+                <textarea class="field" name="text" placeholder="One thing per line…&#10;Call mom&#10;Renew passport&#10;Idea: weekend trip" style="min-height:160px"></textarea>
+                <button class="btn primary" style="margin-top:10px;width:100%">Add all to Inbox</button>
+              </form>
+            </div>
+            <div class="c">
+              <h3>How this works</h3>
+              <p class="mut" style="font-size:14px;line-height:1.6"><b style="color:var(--ink-2)">Inbox</b>: raw thoughts.<br><b style="color:var(--ink-2)">Ready</b>: things you could do.<br><b style="color:var(--ink-2)">Whenever</b>: no pressure, no date.<br>Tag energy so low-energy days still have wins.</p>
+            </div>
+          </div>
+        </div>
+      </section>`;
+  };
+
+  // ================================================================= HABITS
+  const habitsView = () => {
+    const hs = S().habits;
+    const cols = ["#1f1f29", "#3b4a1a", "#6f9a22", "#a6d93a", "#c8ff4d"];
+    const start = addDays(new Date(), -(26 * 7 - 1) - new Date().getDay() + 6);
+    let cells = "";
+    for (let i = 0; i < 26 * 7; i++) {
+      const d = addDays(start, i);
+      if (d > new Date()) { cells += `<i style="opacity:.25"></i>`; continue; }
+      const r = sel.dayHabitRatio(dkey(d));
+      const lvl = r === 0 ? 0 : r < 0.34 ? 1 : r < 0.67 ? 2 : r < 1 ? 3 : 4;
+      cells += `<i style="background:${cols[lvl]}" title="${d.toDateString()}: ${Math.round(r * 100)}%"></i>`;
+    }
+    return `
+      <section class="view" data-view="habits">
+        <div class="hero"><div><h1>Habits. <span>Progress, not perfection.</span></h1><p>Missing a day never resets anything. On hard days, the mini version counts.</p></div></div>
+        <div class="grid g-now">
+          <div class="c">
+            <h3>Your habits <span class="r mono">${hs.filter((h) => h.log[today()]).length}/${hs.length} today</span></h3>
+            ${hs.length ? hs.map((h) => habitRow(h)).join("") : `<div class="empty">Start with one tiny habit. Just one.</div>`}
+            <div class="legend" style="margin-top:10px"><i style="background:var(--lime)"></i> full <i style="background:var(--vio);margin-left:8px"></i> mini</div>
+          </div>
+          <div class="stack">
+            <div class="c">
+              <h3>Consistency · 26 weeks</h3>
+              <div class="heat">${cells}</div>
+              <div class="legend">less ${cols.map((c) => `<i style="background:${c}"></i>`).join("")} more</div>
+            </div>
+            <div class="c">
+              <h3>New habit</h3>
+              <form class="form-grid" data-form="habit">
+                <div class="emoji-row">${HABIT_EMOJIS.map((e) => `<button type="button" class="${ui.habitEmoji === e ? "on" : ""}" data-action="habit-emoji" data-e="${e}">${e}</button>`).join("")}</div>
+                <input class="field" name="name" placeholder="Habit (e.g. Walk 20 min)" required maxlength="40" />
+                <input class="field" name="mini" placeholder="Mini version for hard days (e.g. Walk to the corner)" maxlength="40" />
+                <select class="field" name="area"><option value="">Area (optional)</option>${Object.entries(AREAS).map(([id, a]) => `<option value="${id}">${a.name}</option>`).join("")}</select>
+                <button class="btn primary">Add habit</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>`;
+  };
+
+  // ================================================================= CHECK-IN
+  const checkinView = () => {
+    const c = S().checkins[today()] || {};
+    const days = [...Array(30)].map((_, i) => addDays(new Date(), i - 29));
+    const W = 600, H = 170, px = (i) => (i / 29) * W;
+    const line = (key, max, color, dash = "") => {
+      const pts = days.map((d, i) => { const v = S().checkins[dkey(d)]?.[key]; return v == null ? null : [px(i), H - 10 - (v / max) * (H - 30)]; });
+      let dStr = "", started = false;
+      pts.forEach((p) => { if (!p) { started = false; return; } dStr += `${started ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)} `; started = true; });
+      const dots = pts.filter(Boolean).map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${color}"/>`).join("");
+      return `<path d="${dStr}" fill="none" stroke="${color}" stroke-width="${dash ? 1.8 : 2.8}" stroke-dasharray="${dash}" stroke-opacity="${dash ? 0.75 : 1}" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
+    };
+    // insight: wins on high vs low energy days
+    const winsOn = (k) => S().tasks.filter((t) => t.doneAt && dkey(new Date(t.doneAt)) === k).length + S().habits.filter((h) => h.log[k]).length;
+    const byE = { 1: [], 3: [] };
+    days.forEach((d) => { const k = dkey(d), e = S().checkins[k]?.energy; if (e === 1 || e === 3) byE[e].push(winsOn(k)); });
+    const avg = (a) => (a.length ? (a.reduce((x, y) => x + y, 0) / a.length).toFixed(1) : null);
+    const insight = avg(byE[1]) && avg(byE[3])
+      ? `On low-energy days you still average <b>${avg(byE[1])}</b> wins (vs. <b>${avg(byE[3])}</b> on high-energy days). Low days aren't zero days.`
+      : "Check in a few days in a row and patterns will show up here.";
+    const recent = Object.entries(S().checkins).filter(([, v]) => v.note).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 5);
+    return `
+      <section class="view" data-view="checkin">
+        <div class="hero"><div><h1>Check-in. <span>How are you, really?</span></h1><p>10 seconds. It helps the app suggest tasks that fit your energy.</p></div></div>
+        <div class="grid g-2">
+          <div class="c">
+            <h3>Mood</h3>
+            <div class="mood-pick">${MOODS.map((m, i) => `<button class="${c.mood === i ? "on" : ""}" data-action="mood" data-v="${i}" title="${m.l}">${m.e}</button>`).join("")}</div>
+            <h3 style="margin-top:22px">Energy</h3>
+            <div class="energy-pick">${ENERGY.map((x) => `<button class="${c.energy === x.id ? "on" : ""}" data-action="energy" data-v="${x.id}"><span class="e">${x.e}</span><b>${x.l}</b><small>${x.hint}</small></button>`).join("")}</div>
+            <h3 style="margin-top:22px">Note <span class="r mut">optional</span></h3>
+            <form data-form="checkin-note"><textarea class="field" name="note" placeholder="Anything on your mind? Sleep, meds, stress, wins…" maxlength="280">${esc(c.note || "")}</textarea>
+            <button class="btn ghost" style="margin-top:10px">Save note</button></form>
+          </div>
+          <div class="stack">
+            <div class="c chart">
+              <h3>Last 30 days</h3>
+              <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+                ${[0.25, 0.5, 0.75].map((g) => `<line x1="0" x2="${W}" y1="${H * g}" y2="${H * g}" stroke="#22222c"/>`).join("")}
+                ${line("energy", 3, "#c8ff4d", "5 5")}${line("mood", 4, "#8b7cff")}
+              </svg>
+              <div class="legend"><i style="background:var(--vio)"></i> mood <i style="background:var(--lime);margin-left:8px"></i> energy</div>
+            </div>
+            <div class="c"><h3>Insight</h3><p style="line-height:1.6;color:var(--ink-2)">${insight}</p></div>
+            ${recent.length ? `<div class="c"><h3>Recent notes</h3>${recent.map(([k, v]) => `<div class="past-review"><small>${k} · ${v.mood != null ? MOODS[v.mood].e : ""} ${v.energy ? energyOf(v.energy).e : ""}</small><p>${esc(v.note)}</p></div>`).join("")}</div>` : ""}
+          </div>
+        </div>
+      </section>`;
+  };
+
+  // ================================================================= REVIEW
+  const reviewView = () => {
+    const week = [...Array(7)].map((_, i) => dkey(addDays(new Date(), -i)));
+    const doneW = S().tasks.filter((t) => t.doneAt && week.includes(dkey(new Date(t.doneAt))));
+    const hs = S().habits;
+    const cons = hs.length ? Math.round((week.reduce((a, k) => a + sel.dayHabitRatio(k), 0) / 7) * 100) : 0;
+    const focusW = S().sessions.filter((s) => week.includes(s.date)).reduce((a, s) => a + s.min, 0);
+    const moods = week.map((k) => S().checkins[k]?.mood).filter((m) => m != null);
+    const moodAvg = moods.length ? (moods.reduce((a, b) => a + b, 0) / moods.length + 1).toFixed(1) : "–";
+    const est = S().tasks.filter((t) => t.status === "done" && t.est && t.spent);
+    const ratio = est.length ? est.reduce((a, t) => a + t.spent, 0) / est.reduce((a, t) => a + t.est, 0) : null;
+    const estText = ratio == null
+      ? "Add time estimates and use focus sessions. Life OS will learn how long things <i>really</i> take you."
+      : ratio > 1.15 ? `Things take you about <b>${ratio.toFixed(1)}×</b> your estimates. Totally normal: try padding estimates a bit.`
+      : ratio < 0.85 ? `You finish faster than you think: about <b>${ratio.toFixed(1)}×</b> your estimates.`
+      : "Your estimates are spot on. Nice calibration.";
+    return `
+      <section class="view" data-view="review">
+        <div class="hero"><div><h1>Weekly review. <span>5 minutes.</span></h1><p>Look back without judging. Pick one thing to try next week.</p></div></div>
+        <div class="c" style="margin-bottom:16px">
+          <div class="stats">
+            <div class="stat"><small>Things done (7d)</small><b>${doneW.length}</b></div>
+            <div class="stat"><small>Habit consistency</small><b>${cons}%</b></div>
+            <div class="stat"><small>Average mood</small><b>${moodAvg}<span class="mut" style="font-size:16px">/5</span></b></div>
+            <div class="stat"><small>Focus time</small><b class="mono">${fmtDur(focusW)}</b></div>
+          </div>
+          <p style="margin-top:16px;color:var(--ink-2);font-size:14px">⏱ ${estText}</p>
+        </div>
+        <div class="grid g-2">
+          <div class="c">
+            <h3>Three questions</h3>
+            <form data-form="review">
+              <div class="q"><label>🌟 What went well this week, even something small?</label><textarea class="field" name="a1" required></textarea></div>
+              <div class="q"><label>🧱 What got in the way?</label><textarea class="field" name="a2"></textarea></div>
+              <div class="q"><label>🎯 One thing to try next week?</label><textarea class="field" name="a3"></textarea></div>
+              <button class="btn primary">Save review</button>
+            </form>
+          </div>
+          <div class="c">
+            <h3>Past reviews</h3>
+            ${S().reviews.length ? S().reviews.slice(0, 6).map((r) => `<div class="past-review"><small>${new Date(r.at).toDateString()}</small><p>🌟 ${esc(r.a1)}</p>${r.a2 ? `<p>🧱 ${esc(r.a2)}</p>` : ""}${r.a3 ? `<p>🎯 ${esc(r.a3)}</p>` : ""}</div>`).join("") : `<div class="empty">Your first review will show up here.</div>`}
+          </div>
+        </div>
+      </section>`;
+  };
+
+  // ================================================================= FOCUS OVERLAY
+  const focusOverlay = () => {
+    const f = S().focus;
+    const t = sel.task(f.taskId);
+    const step = t?.steps.find((s) => !s.done);
+    return `
+      <div class="focus" role="dialog" aria-label="Focus mode">
+        <div class="kicker">${f.mode === "5" ? "Just 5 minutes · you can stop after" : "Focus session"}</div>
+        <div class="task-name">${esc(t?.title || "Focus")}</div>
+        ${step ? `<div class="step-now">Next tiny step: <span>${esc(step.text)}</span> <button class="tagbtn" data-action="step-done" data-id="${t.id}" data-step="${step.id}">✓ done</button></div>` : ""}
+        ${disc(240, 16, "focus")}
+        <div class="remaining" data-left>${timeLeftText()}</div>
+        <div class="ctrls">
+          <button class="btn primary big" data-action="done" data-id="${t?.id}">✓ Done</button>
+          <button class="btn ghost" data-action="focus-extend">+5 min</button>
+          <button class="btn ghost" data-action="noise">${fx.noisePlaying() ? "🔇 Stop brown noise" : "🎧 Brown noise"}</button>
+          <button class="btn ghost" data-action="focus-stop">Stop &amp; save</button>
+          <button class="btn quiet" data-action="focus-min">Minimize</button>
+        </div>
+        <label class="leftoff" style="width:min(520px,100%)">📌 <span style="white-space:nowrap">Where I left off:</span>
+          <input id="focusNote" data-note="${t?.id}" value="${esc(t?.note || "")}" placeholder="So future you can pick it up fast…" maxlength="140" /></label>
+      </div>`;
+  };
+
+  // ================================================================= MODALS
+  const STUCK_BASE = ["Open the file or app", "Write just the title", "Gather what I need", "Write 3 messy bullet points", "Do the easiest part first", "Ask someone one question", "Set it up, don't do it yet"];
+  const STUCK_KEYS = [
+    [/mail|email|reply|message|text|slack/i, ["Open the conversation", "Write one sentence", "Send a rough version"]],
+    [/clean|tidy|laundry|dishes|organi[sz]e/i, ["Pick up 5 things", "Clear one surface", "Start one load"]],
+    [/call|phone|book|appointment|dentist|doctor/i, ["Find the number", "Write what to say", "Check my calendar"]],
+    [/write|report|proposal|essay|doc|post/i, ["Open a blank doc", "Write the headline", "Dump ideas as bullets"]],
+    [/pay|bill|budget|tax|invoice|bank/i, ["Open the banking app", "Find the bill", "Note the amount"]],
+    [/study|read|learn|course|exam/i, ["Open to the right page", "Read one paragraph", "Write one question"]],
+    [/gym|run|workout|exercise|walk|train/i, ["Put on shoes", "Fill a water bottle", "Do 1 minute"]],
+    [/cook|meal|groceries|shop|buy/i, ["Write the list", "Check the fridge", "Take out one ingredient"]],
+  ];
+  const stuckSuggestions = (title) => {
+    const hit = STUCK_KEYS.find(([re]) => re.test(title));
+    return [...(hit ? hit[1] : []), ...STUCK_BASE].slice(0, 8);
+  };
+
+  const modalHTML = () => {
+    const m = ui.modal;
+    if (!m) return "";
+    let inner = "";
+    if (m.type === "stuck") {
+      const t = sel.task(m.id);
+      if (!t) return "";
+      inner = `
+        <h2>Let's make it tiny.</h2>
+        <p class="sub">“${esc(t.title)}” is too big to start. What's the very first <b>physical</b> action? Something under 2 minutes.</p>
+        <div class="steps">${t.steps.map((s, i) => `
+          <div class="step ${s.done ? "done" : ""}">
+            <button class="check ${s.done ? "on" : ""}" data-action="step-toggle" data-id="${t.id}" data-step="${s.id}">${I.check}</button>
+            <span class="n">${i + 1}</span><span class="t">${esc(s.text)}</span>
+            <button class="tiny" data-action="step-del" data-id="${t.id}" data-step="${s.id}">${I.x}</button>
+          </div>`).join("")}</div>
+        <form class="inline-form" data-form="step" data-id="${t.id}">
+          <input class="field" name="text" id="stepInput" placeholder="${t.steps.length ? "Then what?" : "First tiny step…"}" maxlength="80" autocomplete="off" />
+          <button class="btn sm primary">Add</button>
+        </form>
+        <div class="label" style="margin-top:18px;margin-bottom:0">Ideas</div>
+        <div class="chips">${stuckSuggestions(t.title).map((s) => `<button class="chip" data-action="step-chip" data-id="${t.id}" data-text="${esc(s)}">${esc(s)}</button>`).join("")}</div>
+        <div class="foot">
+          <button class="btn quiet" data-action="close">Close</button>
+          <button class="btn primary" data-action="stuck-start" data-id="${t.id}" ${t.steps.some((s) => !s.done) ? "" : "disabled"}>${I.play} Start step 1 · 5 min</button>
+        </div>`;
+    } else if (m.type === "pick") {
+      const free = MAX_TOP - sel.topToday().length;
+      const pool = [...S().tasks.filter((t) => t.status === "ready" && t.topDate !== today()), ...sel.inbox(), ...sel.whenever()];
+      inner = `
+        <h2>Pick ${free === 1 ? "one more" : `up to ${free}`}.</h2>
+        <p class="sub">${free ? `${free} of ${MAX_TOP} slots free today. Choose what matters, not what's loudest.` : "All 3 slots are full. Finish or drop one first."}</p>
+        <form class="inline-form" data-form="new-top"><input class="field" name="title" id="pickInput" placeholder="Something new…" maxlength="100" autocomplete="off" /><button class="btn sm primary" ${free ? "" : "disabled"}>Add to today</button></form>
+        <div class="mini-list" style="margin-top:16px;max-height:320px;overflow:auto">
+          ${pool.length ? pool.map((t) => `
+            <button class="mini-item" data-action="add-top" data-id="${t.id}" ${free ? "" : "disabled"}>
+              <span class="dot" style="background:${areaColor(t.area)}"></span><span class="t">${esc(t.title)}</span>
+              ${t.energy ? `<span>${energyOf(t.energy).e}</span>` : ""}${t.est ? `<span class="mut mono" style="font-size:12px">${t.est}m</span>` : ""}
+              <span class="add">+ Today</span>
+            </button>`).join("") : `<div class="empty">Nothing in your lists yet. Type above.</div>`}
+        </div>
+        <div class="foot"><button class="btn ghost" data-action="close">Done</button></div>`;
+    } else if (m.type === "reset") {
+      inner = `
+        <h2>Reset your day?</h2>
+        <p class="sub">Today's priorities go back to your list and the energy check-in clears. Nothing is deleted. Fresh start, zero guilt.</p>
+        <div class="foot"><button class="btn quiet" data-action="close">Cancel</button><button class="btn primary" data-action="reset-confirm">↺ Fresh start</button></div>`;
+    } else if (m.type === "settings") {
+      const st = S().settings;
+      const sw = (k, label, hint) => `<div class="set-row"><div><b>${label}</b><small>${hint}</small></div><button class="switch ${st[k] ? "on" : ""}" data-action="toggle-setting" data-k="${k}" role="switch" aria-checked="${!!st[k]}" aria-label="${label}"></button></div>`;
+      inner = `
+        <h2>Settings</h2>
+        <div style="margin-top:12px">
+          <div class="set-row"><div><b>Name</b><small>How Life OS greets you</small></div><input class="field" style="width:180px" data-setting-name value="${esc(S().name)}" maxlength="24" /></div>
+          ${sw("sound", "Sounds", "A short chime when you finish things")}
+          ${sw("reduceMotion", "Calm mode", "Fewer animations and no confetti")}
+          ${sw("alerts", "Desktop alerts", "Notify when a timer ends or you've hyperfocused")}
+          <div class="set-row"><div><b>Hyperfocus check</b><small>Gentle nudge after focusing this long</small></div>
+            <select class="field" style="width:130px" data-setting="hyperfocusMin">${[[0, "Off"], [45, "45 min"], [60, "1h"], [90, "1h 30m"], [120, "2h"]].map(([v, l]) => `<option value="${v}" ${st.hyperfocusMin === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+          <div class="set-row"><div><b>My day ends at</b><small>Used for the "time left today" bar</small></div>
+            <select class="field" style="width:130px" data-setting="dayEnds">${[19, 20, 21, 22, 23, 24].map((v) => `<option value="${v}" ${st.dayEnds === v ? "selected" : ""}>${v}:00</option>`).join("")}</select></div>
+          <div class="set-row"><div><b>Your data</b><small>Stored only in this browser</small></div>
+            <div class="row"><button class="btn sm ghost" data-action="export">Export</button><label class="btn sm ghost">Import<input type="file" accept="application/json" data-import hidden /></label></div></div>
+          <div class="set-row"><div><b>Start over</b><small>Deletes everything in this browser</small></div><button class="btn sm ghost" style="color:var(--pink)" data-action="wipe">Delete all</button></div>
+        </div>
+        <div class="foot"><button class="btn primary" data-action="close">Done</button></div>`;
+    } else if (m.type === "wipe") {
+      inner = `<h2>Delete everything?</h2><p class="sub">This removes all tasks, habits and check-ins from this browser. Consider exporting first.</p>
+        <div class="foot"><button class="btn quiet" data-action="close">Cancel</button><button class="btn primary" style="background:var(--pink)" data-action="wipe-confirm">Delete all</button></div>`;
+    }
+    return `<div class="overlay" data-action="overlay"><div class="modal" role="dialog" aria-modal="true">${inner}</div></div>`;
+  };
+  const openModal = (m) => { ui.modal = m; renderModal(); };
+  const closeModal = () => { ui.modal = null; renderModal(); render(); };
+  const renderModal = () => {
+    $("#modal-root").innerHTML = modalHTML();
+    const inp = $("#stepInput") || $("#pickInput");
+    if (inp) inp.focus();
+  };
+
+  // ================================================================= RENDER
+  const render = () => {
+    document.documentElement.classList.toggle("calm", !!S().settings.reduceMotion);
+    const app = $("#app");
+    const cap = $("#capture");
+    const capVal = cap ? cap.value : "";
+    const capFocused = cap && document.activeElement === cap;
+    const y = window.scrollY;
+
+    if (!S().onboarded) {
+      app.innerHTML = onboarding();
+      const n = $("#onbName") || $("#onbDump");
+      if (n) n.focus();
+      return;
+    }
+    const views = { now: nowView, today: todayView, inbox: inboxView, habits: habitsView, checkin: checkinView, review: reviewView };
+    const v = views[S().view] ? S().view : "now";
+    app.innerHTML = shell(views[v]()) + (S().focus && ui.focusOpen ? focusOverlay() : "");
+    const same = ui.lastView === v;
+    if (same) { $(".view")?.classList.add("static"); window.scrollTo(0, y); }
+    ui.lastView = v;
+    const c2 = $("#capture");
+    if (c2) { c2.value = capVal; if (capFocused) c2.focus(); }
+    tick();
+  };
+
+  // ================================================================= EVENTS
+  const act = (a, el, e) => {
+    const s = S();
+    const id = el.dataset.id;
+    const t = id ? sel.task(id) : null;
+    switch (a) {
+      // onboarding
+      case "onb-next": {
+        if (ui.onbStep === 0) ui.onbName = $("#onbName").value;
+        if (ui.onbStep === 2) ui.onbDump = $("#onbDump").value;
+        if (ui.onbStep === 3) return finishOnboarding();
+        ui.onbStep++;
+        return render();
+      }
       case "onb-back":
-        state.step = Math.max(0, state.step - 1);
-        break;
+        if (ui.onbStep === 2) ui.onbDump = $("#onbDump").value;
+        ui.onbStep = Math.max(0, ui.onbStep - 1);
+        return render();
       case "onb-skip":
-      case "onb-finish":
-        finishOnboarding();
-        return;
-      case "toggle-area": {
-        const i = state.areas.indexOf(id);
-        i >= 0 ? state.areas.splice(i, 1) : state.areas.push(id);
-        // atualização local para preservar a animação
+        ui.onbName = $("#onbName")?.value || "";
+        return finishOnboarding();
+      case "onb-area": {
+        const i = ui.onbAreas.indexOf(id);
+        i >= 0 ? ui.onbAreas.splice(i, 1) : ui.onbAreas.push(id);
         el.classList.toggle("on");
-        const go = $(".go");
-        if (go) go.toggleAttribute("disabled", !state.areas.length);
+        return;
+      }
+      case "onb-pick": {
+        const i = Number(el.dataset.i);
+        const k = ui.onbPicks.indexOf(i);
+        if (k >= 0) ui.onbPicks.splice(k, 1);
+        else if (ui.onbPicks.length >= MAX_TOP) { toast("Three is plenty. Unpick one first."); return; }
+        else ui.onbPicks.push(i);
+        return render();
+      }
+
+      // navigation
+      case "nav": s.view = el.dataset.view; save(); window.scrollTo(0, 0); return render();
+      case "settings": return openModal({ type: "settings" });
+      case "focus-capture": $("#capture")?.focus(); return;
+
+      // tasks
+      case "done": if (t) completeTask(id); return;
+      case "undone": uncomplete(id); break;
+      case "set-current": s.currentId = id; s.view = "now"; break;
+      case "drop-top": if (t) { t.topDate = null; if (s.currentId === id) s.currentId = null; } break;
+      case "add-top": if (!makeTop(id)) return; if (ui.modal) { save(); renderModal(); render(); return; } toast("Added to today ★"); break;
+      case "ready": if (t) t.status = "ready"; break;
+      case "later": later(id); break;
+      case "del-task": {
+        const idx = s.tasks.indexOf(t);
+        s.tasks.splice(idx, 1);
+        if (s.currentId === id) s.currentId = null;
+        toast("Deleted", { action: { label: "Undo", fn: () => { s.tasks.splice(idx, 0, t); save(); render(); } } });
+        break;
+      }
+      case "cycle": {
+        const k = el.dataset.k;
+        if (k === "area") { const keys = [null, ...Object.keys(AREAS)]; t.area = keys[(keys.indexOf(t.area) + 1) % keys.length]; }
+        if (k === "energy") t.energy = t.energy === 3 ? null : (t.energy || 0) + 1;
+        if (k === "est") t.est = EST_STEPS[(EST_STEPS.indexOf(t.est) + 1) % EST_STEPS.length];
+        break;
+      }
+      case "inbox-tab": ui.inboxTab = el.dataset.v; return render();
+      case "inbox-energy": ui.inboxEnergy = Number(el.dataset.v); return render();
+      case "pick": return openModal({ type: "pick" });
+      case "reset-day": return openModal({ type: "reset" });
+      case "reset-confirm":
+        sel.topToday().forEach((x) => (x.topDate = null));
+        s.currentId = null;
+        if (s.checkins[today()]) delete s.checkins[today()].energy;
         save();
+        closeModal();
+        toast("Fresh start. ✨ What's one thing?");
+        return;
+
+      // steps / stuck
+      case "stuck": return openModal({ type: "stuck", id });
+      case "step-chip":
+        t.steps.push({ id: uid(), text: el.dataset.text, done: false });
+        save(); renderModal(); render();
+        return;
+      case "step-toggle": {
+        const st = t.steps.find((x) => x.id === el.dataset.step);
+        st.done = !st.done;
+        save(); renderModal(); render();
         return;
       }
-      case "mood-pick":
-        paintMood(Number(el.dataset.v));
+      case "step-del":
+        t.steps = t.steps.filter((x) => x.id !== el.dataset.step);
+        save(); renderModal(); render();
         return;
-      case "tab":
-        state.tab = el.dataset.tab;
-        ui.trayOpen = false;
-        break;
-      case "toggle-habit": {
-        const h = state.habits.find((x) => x.id === id);
-        if (!h) return;
-        const k = today();
-        h.log[k] ? delete h.log[k] : (h.log[k] = true);
-        if (h.log[k]) {
-          const allDone = state.habits.every((x) => isDone(x));
-          toast(allDone ? "Todos os hábitos de hoje feitos! 🎉" : `${h.emoji} Feito! Sequência de ${streak(h)} 🔥`);
-        }
+      case "step-done": {
+        const st = t.steps.find((x) => x.id === el.dataset.step);
+        st.done = true;
+        if (s.settings.sound) fx.chime();
+        const left = t.steps.filter((x) => !x.done).length;
+        toast(left ? `Step done ✓ ${left} to go.` : "All steps done! Mark the task as done?", left ? {} : { action: { label: "Done", fn: () => completeTask(t.id) } });
         break;
       }
-      case "del-habit":
-        state.habits = state.habits.filter((x) => x.id !== id);
-        toast("Hábito removido");
-        break;
-      case "tray":
-        ui.trayOpen = !ui.trayOpen;
-        break;
-      case "pick-emoji":
-        ui.newEmoji = el.dataset.e;
-        ui.trayOpen = false;
-        break;
-      case "toggle-task": {
-        const t = state.tasks.find((x) => x.id === id);
-        if (t) { t.done = !t.done; t.date = today(); }
-        break;
-      }
-      case "del-task":
-        state.tasks = state.tasks.filter((x) => x.id !== id);
-        break;
-      case "save-mood":
-        state.moods[today()] = { v: ui.mood, note: ($("#moodNote")?.value || "").trim() };
-        toast(`Humor salvo: ${MOODS[ui.mood].e} ${MOODS[ui.mood].l}`);
-        break;
-      case "cycle-goal-emoji": {
-        const list = ["🚀", "🎯", "🏆", "💪", "📈", "🌱", "✈️", "🏠"];
-        ui.goalEmoji = list[(list.indexOf(ui.goalEmoji) + 1) % list.length];
-        el.textContent = ui.goalEmoji;
+      case "stuck-start":
+        ui.modal = null;
+        renderModal();
+        return startFocus(id, 5, "5");
+
+      // focus
+      case "focus-5": return startFocus(id, 5, "5");
+      case "focus-full": return startFocus(id, t.est || 25, "full");
+      case "focus-open": ui.focusOpen = true; return render();
+      case "focus-min": ui.focusOpen = false; return render();
+      case "focus-stop": return endFocus();
+      case "focus-extend": s.focus.dur += 5; s.focus.ended = false; break;
+      case "nudge-ok": s.focus.nudged = false; s.focus.nudgeAt = focusElapsed() + 30; toast("Okay! I'll check again in 30 min."); break;
+      case "noise": fx.noisePlaying() ? fx.noiseOff() : fx.noiseOn(); setTimeout(render, 30); return;
+
+      // habits
+      case "habit": {
+        const h = s.habits.find((x) => x.id === id);
+        const v = el.dataset.v;
+        if (h.log[today()] === v) { delete h.log[today()]; break; }
+        h.log[today()] = v;
+        save(); render();
+        reward(v === "mini" ? "Mini counts. Still showed up. ✓" : `${h.emoji} ${esc(h.name)} ✓`);
         return;
       }
-      case "goal-step": {
-        const g = state.goals.find((x) => x.id === id);
-        if (g) {
-          g.progress = Math.max(0, Math.min(100, g.progress + Number(el.dataset.d)));
-          if (g.progress === 100) toast(`Meta concluída: ${g.title} 🏆`);
-        }
+      case "del-habit": {
+        const h = s.habits.find((x) => x.id === id);
+        const idx = s.habits.indexOf(h);
+        s.habits.splice(idx, 1);
+        toast("Habit removed", { action: { label: "Undo", fn: () => { s.habits.splice(idx, 0, h); save(); render(); } } });
         break;
       }
-      case "del-goal":
-        state.goals = state.goals.filter((x) => x.id !== id);
-        break;
-      default:
+      case "habit-emoji": ui.habitEmoji = el.dataset.e; $$(".emoji-row button").forEach((b) => b.classList.toggle("on", b === el)); return;
+
+      // check-in
+      case "energy": s.checkins[today()] = { ...(s.checkins[today()] || {}), energy: Number(el.dataset.v) }; toast(`${energyOf(Number(el.dataset.v)).e} Got it. Suggestions adjusted.`); break;
+      case "energy-reset": if (s.checkins[today()]) delete s.checkins[today()].energy; break;
+      case "mood": s.checkins[today()] = { ...(s.checkins[today()] || {}), mood: Number(el.dataset.v) }; toast(`${MOODS[Number(el.dataset.v)].e} Logged. Thanks for checking in.`); break;
+
+      // schedule
+      case "del-event": s.schedule = s.schedule.filter((x) => x.id !== id); break;
+
+      // settings & modals
+      case "toggle-setting": {
+        const k = el.dataset.k;
+        s.settings[k] = !s.settings[k];
+        if (k === "alerts" && s.settings.alerts && "Notification" in window && Notification.permission === "default") Notification.requestPermission();
+        save(); renderModal(); render();
         return;
+      }
+      case "export": {
+        const blob = new Blob([JSON.stringify(s, null, 2)], { type: "application/json" });
+        const a2 = document.createElement("a");
+        a2.href = URL.createObjectURL(blob);
+        a2.download = `life-os-${today()}.json`;
+        a2.click();
+        URL.revokeObjectURL(a2.href);
+        return;
+      }
+      case "wipe": return openModal({ type: "wipe" });
+      case "wipe-confirm": store.reset(); ui.modal = null; renderModal(); ui.onbStep = 0; return render();
+      case "close": return closeModal();
+      case "overlay": if (e.target === el) closeModal(); return;
+      default: return;
     }
     save();
     render();
+    if (ui.modal) renderModal();
   };
 
   document.addEventListener("click", (e) => {
     const el = e.target.closest("[data-action]");
-    if (el && !el.disabled) act(el.dataset.action, el);
+    if (!el || el.disabled) return;
+    if (el.dataset.action !== "overlay") e.stopPropagation();
+    act(el.dataset.action, el, e);
   });
 
   document.addEventListener("submit", (e) => {
     const f = e.target.closest("form[data-form]");
     if (!f) return;
     e.preventDefault();
-    const data = Object.fromEntries(new FormData(f));
-    const kind = f.dataset.form;
-    if (kind === "task" && data.text.trim()) {
-      state.tasks.unshift({ id: uid(), text: data.text.trim(), done: false, date: today() });
-    } else if (kind === "habit" && data.name.trim()) {
-      state.habits.push({ id: uid(), emoji: ui.newEmoji, name: data.name.trim(), log: {} });
-      toast(`${ui.newEmoji} Hábito criado`);
-    } else if (kind === "goal" && data.title.trim()) {
-      state.goals.push({ id: uid(), emoji: ui.goalEmoji, title: data.title.trim(), progress: 0 });
-      toast("Meta criada 🎯");
-    } else return;
+    const d = Object.fromEntries(new FormData(f));
+    const s = S();
+    switch (f.dataset.form) {
+      case "capture":
+        if (d.text.trim()) { f.reset(); $("#capture").value = ""; capture(d.text); }
+        return;
+      case "dump":
+        if (d.text.trim()) capture(d.text);
+        return;
+      case "event":
+        s.schedule.push({ id: uid(), date: today(), time: d.time, label: d.label.trim(), dur: Number(d.dur), area: d.area || null });
+        toast("Block added");
+        break;
+      case "habit":
+        s.habits.push({ id: uid(), emoji: ui.habitEmoji, name: d.name.trim(), mini: d.mini.trim(), area: d.area || null, log: {} });
+        toast(`${ui.habitEmoji} Habit added. Start tiny.`);
+        break;
+      case "checkin-note":
+        s.checkins[today()] = { ...(s.checkins[today()] || {}), note: d.note.trim() };
+        toast("Note saved");
+        break;
+      case "review":
+        s.reviews.unshift({ at: Date.now(), a1: d.a1.trim(), a2: d.a2.trim(), a3: d.a3.trim() });
+        save(); render();
+        reward("Review saved. That's real self-awareness. ✓");
+        return;
+      case "step": {
+        const t = sel.task(f.dataset.id);
+        if (d.text.trim()) t.steps.push({ id: uid(), text: d.text.trim(), done: false });
+        save(); renderModal(); render();
+        return;
+      }
+      case "new-top": {
+        if (!d.title.trim()) return;
+        const t = addTask(d.title);
+        if (!makeTop(t.id)) t.status = "ready";
+        save(); renderModal(); render();
+        return;
+      }
+      default: return;
+    }
     save();
     render();
-    const inp = $(`form[data-form="${kind}"] input`);
-    if (inp) inp.focus();
+  });
+
+  // "where I left off" notes + settings inputs save on change
+  document.addEventListener("change", (e) => {
+    const el = e.target;
+    if (el.dataset.note) { const t = sel.task(el.dataset.note); if (t) { t.note = el.value.trim(); save(); toast("📌 Saved for future you"); } }
+    if (el.dataset.setting) { S().settings[el.dataset.setting] = Number(el.value); save(); render(); }
+    if (el.hasAttribute("data-setting-name")) { S().name = el.value.trim(); save(); render(); }
+    if (el.hasAttribute("data-import") && el.files[0]) {
+      const r = new FileReader();
+      r.onload = () => {
+        try { store.replace(JSON.parse(r.result)); ui.modal = null; renderModal(); render(); toast("Imported ✓"); }
+        catch { toast("That file doesn't look like a Life OS export."); }
+      };
+      r.readAsText(el.files[0]);
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName);
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); $("#capture")?.focus(); return; }
+    if (e.key === "/" && !typing && S().onboarded) { e.preventDefault(); $("#capture")?.focus(); return; }
+    if (e.key === "Escape") {
+      if (ui.modal) return closeModal();
+      if (ui.focusOpen) { ui.focusOpen = false; return render(); }
+      if (typing) document.activeElement.blur();
+    }
+    if (e.key === "Enter" && document.activeElement?.id === "onbName") act("onb-next", document.activeElement, e);
   });
 
   render();
+  window.LOS.render = render;
 })();
