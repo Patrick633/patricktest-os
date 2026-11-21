@@ -13,6 +13,50 @@ window.LOS = window.LOS || {};
   const nowMin = () => { const d = new Date(); return d.getHours() * 60 + d.getMinutes(); };
   const toMin = (hhmm) => { const [h, m] = hhmm.split(":").map(Number); return h * 60 + m; };
 
+  // ---------- planning (no hard deadlines: things "arrive", they never become overdue) ----------
+  const weekStart = (d = new Date()) => { const x = new Date(d); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return dkey(x); }; // Monday
+  const monthKey = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+  const shortDate = (k) => new Date(k + "T12:00").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  const makePlan = (kind, date) => {
+    const now = new Date();
+    if (kind === "tomorrow") return { scope: "day", key: dkey(addDays(now, 1)) };
+    if (kind === "week") return { scope: "week", key: weekStart(now) };
+    if (kind === "nextweek") return { scope: "week", key: weekStart(addDays(now, 7)) };
+    if (kind === "month") return { scope: "month", key: monthKey(now) };
+    if (kind === "nextmonth") return { scope: "month", key: monthKey(new Date(now.getFullYear(), now.getMonth() + 1, 1)) };
+    if (kind === "date" && date) return { scope: "day", key: date };
+    return null;
+  };
+  const planLabel = (p) => {
+    if (!p) return "";
+    const now = new Date();
+    if (p.scope === "day") {
+      if (p.key === dkey(now)) return "Today";
+      if (p.key === dkey(addDays(now, 1))) return "Tomorrow";
+      if (p.key < dkey(now)) return `Since ${shortDate(p.key)}`;
+      return shortDate(p.key);
+    }
+    if (p.scope === "week") {
+      const ws = weekStart(now);
+      if (p.key === ws) return "This week";
+      if (p.key === weekStart(addDays(now, 7))) return "Next week";
+      if (p.key < ws) return "Since last week";
+      return `Week of ${new Date(p.key + "T12:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}`;
+    }
+    const mk = monthKey(now);
+    if (p.key === mk) return "This month";
+    if (p.key < mk) return "Since last month";
+    return new Date(p.key + "-15T12:00").toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  };
+  /** has the planned time arrived? (today, this week or this month) */
+  const planArrived = (p) => {
+    if (!p) return true;
+    if (p.scope === "day") return p.key <= dkey();
+    if (p.scope === "week") return p.key <= weekStart();
+    return p.key <= monthKey();
+  };
+  const planSort = (p) => (p.scope === "month" ? `${p.key}-32` : p.key);
+
   /** "40 min", "1h 20m", "2h" */
   const fmtDur = (min) => {
     min = Math.max(0, Math.round(min));
@@ -96,7 +140,13 @@ window.LOS = window.LOS || {};
     topToday: () => store.state.tasks.filter((t) => t.topDate === today() && t.status !== "done"),
     doneToday: () => store.state.tasks.filter((t) => t.status === "done" && t.doneAt && dkey(new Date(t.doneAt)) === today()),
     inbox: () => store.state.tasks.filter((t) => t.status === "inbox"),
-    ready: () => store.state.tasks.filter((t) => t.status === "ready" && t.topDate !== today()),
+    ready: () => store.state.tasks.filter((t) => t.status === "ready" && t.topDate !== today() && planArrived(t.plan)),
+    /** planned for later (hasn't arrived yet) */
+    planned: () => store.state.tasks.filter((t) => t.plan && t.status !== "done" && t.status !== "whenever" && t.topDate !== today() && !planArrived(t.plan))
+      .sort((a, b) => planSort(a.plan).localeCompare(planSort(b.plan))),
+    /** planned things whose time has come (shown as gentle suggestions, never "overdue") */
+    arrived: () => store.state.tasks.filter((t) => t.plan && t.status !== "done" && t.status !== "whenever" && t.topDate !== today() && planArrived(t.plan))
+      .sort((a, b) => ({ day: 0, week: 1, month: 2 }[a.plan.scope] - { day: 0, week: 1, month: 2 }[b.plan.scope])),
     whenever: () => store.state.tasks.filter((t) => t.status === "whenever"),
     checkin: (k = today()) => store.state.checkins[k],
     energy: () => store.state.checkins[today()]?.energy ?? null,
@@ -124,12 +174,12 @@ window.LOS = window.LOS || {};
     /** tasks that fit today's energy (low energy → only low tasks) */
     energyFit: () => {
       const e = sel.energy();
-      const pool = [...sel.ready(), ...sel.inbox()];
+      const pool = [...sel.ready().filter((t) => !t.plan), ...sel.inbox()];
       if (!e) return pool.slice(0, 4);
       return pool.filter((t) => (t.energy || 2) <= e).sort((a, b) => (a.est || 99) - (b.est || 99)).slice(0, 4);
     },
     winsToday: () => sel.doneToday().length + store.state.habits.filter((h) => h.log[today()]).length,
   };
 
-  Object.assign(window.LOS, { pad, dkey, addDays, uid, esc, today, nowMin, toMin, fmtDur, AREAS, HABIT_TEMPLATES, MOODS, ENERGY, MAX_TOP, store, sel });
+  Object.assign(window.LOS, { weekStart, monthKey, makePlan, planLabel, planArrived, pad, dkey, addDays, uid, esc, today, nowMin, toMin, fmtDur, AREAS, HABIT_TEMPLATES, MOODS, ENERGY, MAX_TOP, store, sel });
 })();

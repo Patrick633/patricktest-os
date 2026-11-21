@@ -3,7 +3,7 @@
    Vanilla JS; state lives in LOS.store (localStorage). */
 (() => {
   "use strict";
-  const { dkey, addDays, uid, esc, today, nowMin, toMin, fmtDur, AREAS, HABIT_TEMPLATES, MOODS, ENERGY, MAX_TOP, store, sel, fx } = window.LOS;
+  const { makePlan, planLabel, planArrived, dkey, addDays, uid, esc, today, nowMin, toMin, fmtDur, AREAS, HABIT_TEMPLATES, MOODS, ENERGY, MAX_TOP, store, sel, fx } = window.LOS;
   const S = () => store.state;
   const $ = (q, el = document) => el.querySelector(q);
   const $$ = (q, el = document) => [...el.querySelectorAll(q)];
@@ -31,6 +31,8 @@
     onbStep: 0, onbName: "", onbAreas: [], onbDump: "", onbPicks: [],
     inboxTab: "inbox", inboxEnergy: 0,
     habitEmoji: "💧",
+    editing: null, // task id being renamed
+    whenFor: null, // task id with the "When?" picker open
     modal: null,
     focusOpen: false,
     lastView: null,
@@ -86,13 +88,25 @@
     S().tasks.unshift(t);
     return t;
   };
+  const WHEN_RE = /\s+(today|tomorrow|this week|next week|this month|next month)$/i;
+  const WHEN_WORDS = { today: "today", tomorrow: "tomorrow", "this week": "week", "next week": "nextweek", "this month": "month", "next month": "nextmonth" };
   const capture = (text) => {
     const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
     if (!lines.length) return;
-    const made = lines.map((l) => addTask(l));
+    const made = lines.map((l) => {
+      const m = l.match(WHEN_RE);
+      const t = addTask(m && m.index > 0 ? l.slice(0, m.index) : l);
+      if (m && m.index > 0) {
+        const k = WHEN_WORDS[m[1].toLowerCase()];
+        if (k === "today") { if (!makeTop(t.id)) t.status = "ready"; }
+        else { t.plan = makePlan(k); t.status = "ready"; }
+      }
+      return t;
+    });
     save();
     render();
-    toast(`Captured ${made.length > 1 ? `${made.length} items` : `"${esc(made[0].title)}"`} to Inbox`, {
+    const one = made.length === 1 ? made[0] : null;
+    toast(`Captured ${one ? `"${esc(one.title)}"` : `${made.length} items`}${one && one.plan ? ` · 📅 ${planLabel(one.plan)}` : one && one.topDate === today() ? " · ★ Today" : " to Inbox"}`, {
       action: { label: "Undo", fn: () => { S().tasks = S().tasks.filter((t) => !made.includes(t)); save(); render(); } },
     });
   };
@@ -105,6 +119,7 @@
       return false;
     }
     t.topDate = today();
+    t.plan = null;
     if (t.status === "inbox" || t.status === "whenever") t.status = "ready";
     if (!S().currentId || !sel.task(S().currentId) || sel.task(S().currentId).status === "done") S().currentId = t.id;
     return true;
@@ -127,11 +142,20 @@
     t.status = "ready";
     t.doneAt = null;
   };
+  const setPlan = (t, plan) => {
+    if (!t || !plan) return;
+    t.plan = plan;
+    if (t.topDate === today()) t.topDate = null;
+    if (S().currentId === t.id) S().currentId = null;
+    if (t.status !== "ready") t.status = "ready";
+    toast(`📅 ${planLabel(plan)}. It'll show up when it's time.`);
+  };
   const later = (id) => {
     const t = sel.task(id);
     if (!t) return;
     t.status = "whenever";
     t.topDate = null;
+    t.plan = null;
     if (S().currentId === id) S().currentId = null;
     toast("Moved to Whenever. No guilt, it'll wait.");
   };
@@ -338,7 +362,7 @@
           </nav>
           <form class="capture" data-form="capture" role="search">
             <span class="mut">＋</span>
-            <input id="capture" name="text" placeholder="Capture anything… (Enter to save)" autocomplete="off" maxlength="140" aria-label="Quick capture" />
+            <input id="capture" name="text" placeholder="Capture… try “call mom tomorrow”" autocomplete="off" maxlength="140" aria-label="Quick capture" />
             <kbd>⌘K</kbd>
           </form>
           <button class="icon-btn" data-action="settings" aria-label="Settings">${I.gear}</button>
@@ -462,7 +486,7 @@
             ${t.est ? `<span class="pill gray">~${fmtDur(t.est)}</span>` : ""}
             ${t.energy ? `<span class="pill gray">${energyOf(t.energy).e} ${energyOf(t.energy).l} energy</span>` : ""}
           </div>
-          <div class="now-title">${esc(t.title)}</div>
+          ${titleEl(t, "now-title")}
           <div class="next-step">
             ${step ? `
               <button class="check sq" data-action="step-done" data-id="${t.id}" data-step="${step.id}" aria-label="Step done">${I.check}</button>
@@ -496,7 +520,7 @@
         ${nudge}
         <div class="grid g-now">
           <div class="stack">${card}${top3Card()}</div>
-          <div class="stack">${window.LOS.screen.nowNudge()}${energyCard()}${nextUpCard()}${winsCard()}
+          <div class="stack">${window.LOS.screen.nowNudge()}${arrivedCard()}${energyCard()}${nextUpCard()}${winsCard()}
             <button class="btn quiet" data-action="reset-day" style="align-self:flex-start">↺ Reset my day</button>
           </div>
         </div>
@@ -585,10 +609,44 @@
             ${hs.length ? hs.map((h) => habitRow(h, true)).join("") : `<div class="empty">No habits yet. <button class="tagbtn" data-action="nav" data-view="habits">Add one</button></div>`}
             <p class="mut" style="font-size:12px;margin-top:6px">Mini counts. Missing a day never resets anything.</p>
           </div>
-          <div class="stack">${energyCard()}${winsCard()}
+          <div class="stack">${arrivedCard()}${energyCard()}${winsCard()}
             <button class="btn quiet" data-action="reset-day" style="align-self:flex-start">↺ Reset my day</button></div>
         </div>
       </section>`;
+  };
+
+  // ================================================================= EDITABLE TITLE / WHEN PICKER
+  const titleEl = (t, cls) => ui.editing === t.id
+    ? `<input class="edit-input ${cls}" data-edit="${t.id}" value="${esc(t.title)}" maxlength="140" aria-label="Edit task name" />`
+    : `<button class="title-btn ${cls}" data-action="edit-title" data-id="${t.id}" title="Click to edit">${esc(t.title)}<span class="pen" aria-hidden="true">✎</span></button>`;
+
+  const WHEN_OPTS = [["today", "★ Today"], ["tomorrow", "Tomorrow"], ["week", "This week"], ["nextweek", "Next week"], ["month", "This month"], ["nextmonth", "Next month"]];
+  const samePlan = (a, b) => a && b && a.scope === b.scope && a.key === b.key;
+  const whenPicker = (t) => `
+    <div class="when-picker">
+      <span class="wp-label">When?</span>
+      ${WHEN_OPTS.map(([k, l]) => `<button class="chip ${k === "today" ? (t.topDate === today() ? "on" : "") : samePlan(t.plan, makePlan(k)) ? "on" : ""}" data-action="plan" data-k="${k}" data-id="${t.id}">${l}</button>`).join("")}
+      <input class="chip date-in" type="date" min="${today()}" data-plan-date="${t.id}" value="${t.plan && t.plan.scope === "day" ? t.plan.key : ""}" aria-label="Pick a date" />
+      <button class="chip" data-action="plan" data-k="whenever" data-id="${t.id}">Whenever</button>
+      ${t.plan ? `<button class="chip" data-action="plan" data-k="clear" data-id="${t.id}">Clear</button>` : ""}
+    </div>`;
+
+  /** planned things whose time has arrived: gentle suggestions, never "overdue" */
+  const arrivedCard = () => {
+    const a = sel.arrived();
+    if (!a.length) return "";
+    return `
+      <div class="c">
+        <h3>Planned for now <span class="r mono">${a.length}</span></h3>
+        <div class="mini-list">${a.slice(0, 5).map((t) => `
+          <div class="mini-item">
+            <span class="dot" style="background:${areaColor(t.area)}"></span>
+            <span class="t">${esc(t.title)}</span>
+            <span class="pill vio">${planLabel(t.plan)}</span>
+            <button class="add" data-action="add-top" data-id="${t.id}">+ Today</button>
+          </div>`).join("")}</div>
+        ${a.length > 5 ? `<button class="tagbtn" style="margin-top:10px" data-action="goto-ready">See all ${a.length}</button>` : ""}
+      </div>`;
   };
 
   // ================================================================= INBOX
@@ -597,47 +655,63 @@
     energy: (t) => (t.energy ? `${energyOf(t.energy).e} ${energyOf(t.energy).l}` : "+ energy"),
     est: (t) => (t.est ? `⏱ ${fmtDur(t.est)}` : "+ time"),
   };
+  const taskCard = (t, tab) => `
+    <div class="task-wrap ${ui.whenFor === t.id ? "open" : ""}">
+      <div class="task-card">
+        ${tab === "done" ? `<button class="check on" data-action="undone" data-id="${t.id}">${I.check}</button>` : `<button class="check" data-action="done" data-id="${t.id}" aria-label="Done">${I.check}</button>`}
+        <div class="t">
+          ${titleEl(t, "tc-title")}
+          <div class="tags">
+            ${t.topDate === today() && t.status !== "done" ? `<span class="pill">★ Today</span>` : ""}
+            ${tab === "done" ? "" : `
+            <button class="tagbtn ${t.plan ? "plan" : ""}" data-action="when" data-id="${t.id}">📅 ${t.plan ? planLabel(t.plan) : "+ when"}</button>
+            <button class="tagbtn" data-action="cycle" data-k="area" data-id="${t.id}">${cycleLabel.area(t)}</button>
+            <button class="tagbtn" data-action="cycle" data-k="energy" data-id="${t.id}">${cycleLabel.energy(t)}</button>
+            <button class="tagbtn" data-action="cycle" data-k="est" data-id="${t.id}">${cycleLabel.est(t)}</button>`}
+            ${t.steps.length ? `<span class="pill gray">${t.steps.filter((x) => x.done).length}/${t.steps.length} steps</span>` : ""}
+          </div>
+        </div>
+        ${tab === "done" ? "" : `<div class="acts">
+          ${t.topDate === today() ? "" : `<button class="tiny lime" data-action="add-top" data-id="${t.id}">★ Today</button>`}
+          <button class="tiny" data-action="when" data-id="${t.id}">📅 When</button>
+          <button class="tiny" data-action="stuck" data-id="${t.id}">Break down</button>
+          <button class="tiny" data-action="del-task" data-id="${t.id}" aria-label="Delete">${I.x}</button>
+        </div>`}
+      </div>
+      ${ui.whenFor === t.id ? whenPicker(t) : ""}
+    </div>`;
+
   const inboxView = () => {
     const tab = ui.inboxTab;
-    let list = tab === "inbox" ? sel.inbox() : tab === "ready" ? S().tasks.filter((t) => t.status === "ready") : tab === "whenever" ? sel.whenever() : S().tasks.filter((t) => t.status === "done").sort((a, b) => b.doneAt - a.doneAt).slice(0, 40);
+    const readyAll = () => S().tasks.filter((t) => t.status === "ready" && planArrived(t.plan));
+    let list = tab === "inbox" ? sel.inbox() : tab === "ready" ? readyAll() : tab === "planned" ? sel.planned() : tab === "whenever" ? sel.whenever() : S().tasks.filter((t) => t.status === "done").sort((a, b) => b.doneAt - a.doneAt).slice(0, 40);
     if (ui.inboxEnergy) list = list.filter((t) => t.energy === ui.inboxEnergy);
-    const counts = { inbox: sel.inbox().length, ready: S().tasks.filter((t) => t.status === "ready").length, whenever: sel.whenever().length };
+    const counts = { inbox: sel.inbox().length, ready: readyAll().length, planned: sel.planned().length, whenever: sel.whenever().length };
+    let body = "";
+    if (!list.length) body = `<div class="empty">${{ inbox: "Inbox zero. Your head should feel lighter. 🌬️", planned: "Nothing planned ahead. Use 📅 When on any task, or type “tomorrow” / “next week” at the end when capturing." }[tab] || "Nothing here."}</div>`;
+    else if (tab === "planned") {
+      let last = null;
+      list.forEach((t) => {
+        const l = planLabel(t.plan);
+        if (l !== last) { body += `<div class="group-h">${l}</div>`; last = l; }
+        body += taskCard(t, tab);
+      });
+    } else body = list.map((t) => taskCard(t, tab)).join("");
     return `
       <section class="view" data-view="inbox">
-        <div class="hero"><div><h1>Inbox. <span>Out of your head.</span></h1><p>Capture without thinking. Sort later, or never. Nothing here is "overdue".</p></div></div>
+        <div class="hero"><div><h1>Inbox. <span>Out of your head.</span></h1><p>Capture without thinking. Sort later, or never. Nothing here is "overdue". Click a task's name to edit it.</p></div></div>
         <div class="grid g-now">
           <div class="c">
             <div class="row" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:16px">
               <div class="seg">
-                ${[["inbox", "Inbox"], ["ready", "Ready"], ["whenever", "Whenever"], ["done", "Done"]].map(([id, l]) => `<button class="${tab === id ? "on" : ""}" data-action="inbox-tab" data-v="${id}">${l}${counts[id] != null ? ` <span class="mono mut">${counts[id]}</span>` : ""}</button>`).join("")}
+                ${[["inbox", "Inbox"], ["ready", "Ready"], ["planned", "Planned"], ["whenever", "Whenever"], ["done", "Done"]].map(([id, l]) => `<button class="${tab === id ? "on" : ""}" data-action="inbox-tab" data-v="${id}">${l}${counts[id] != null ? ` <span class="mono mut">${counts[id]}</span>` : ""}</button>`).join("")}
               </div>
               <div class="seg">
                 <button class="${!ui.inboxEnergy ? "on" : ""}" data-action="inbox-energy" data-v="0">Any</button>
                 ${ENERGY.map((e) => `<button class="${ui.inboxEnergy === e.id ? "on" : ""}" data-action="inbox-energy" data-v="${e.id}" title="${e.l} energy">${e.e}</button>`).join("")}
               </div>
             </div>
-            ${list.length ? list.map((t) => `
-              <div class="task-card">
-                ${tab === "done" ? `<button class="check on" data-action="undone" data-id="${t.id}">${I.check}</button>` : `<button class="check" data-action="done" data-id="${t.id}" aria-label="Done">${I.check}</button>`}
-                <div class="t">
-                  <b>${esc(t.title)}</b>
-                  <div class="tags">
-                    ${t.topDate === today() && t.status !== "done" ? `<span class="pill">★ Today</span>` : ""}
-                    ${tab === "done" ? "" : `
-                    <button class="tagbtn" data-action="cycle" data-k="area" data-id="${t.id}">${cycleLabel.area(t)}</button>
-                    <button class="tagbtn" data-action="cycle" data-k="energy" data-id="${t.id}">${cycleLabel.energy(t)}</button>
-                    <button class="tagbtn" data-action="cycle" data-k="est" data-id="${t.id}">${cycleLabel.est(t)}</button>`}
-                    ${t.steps.length ? `<span class="pill gray">${t.steps.filter((s) => s.done).length}/${t.steps.length} steps</span>` : ""}
-                  </div>
-                </div>
-                ${tab === "done" ? "" : `<div class="acts">
-                  ${t.topDate === today() ? "" : `<button class="tiny lime" data-action="add-top" data-id="${t.id}">★ Today</button>`}
-                  <button class="tiny" data-action="stuck" data-id="${t.id}">Break down</button>
-                  ${t.status === "inbox" ? `<button class="tiny" data-action="ready" data-id="${t.id}">Ready</button>` : ""}
-                  ${t.status !== "whenever" ? `<button class="tiny" data-action="later" data-id="${t.id}">Whenever</button>` : ""}
-                  <button class="tiny" data-action="del-task" data-id="${t.id}" aria-label="Delete">${I.x}</button>
-                </div>`}
-              </div>`).join("") : `<div class="empty">${tab === "inbox" ? "Inbox zero. Your head should feel lighter. 🌬️" : "Nothing here."}</div>`}
+            ${body}
           </div>
           <div class="stack">
             <div class="c">
@@ -649,7 +723,8 @@
             </div>
             <div class="c">
               <h3>How this works</h3>
-              <p class="mut" style="font-size:14px;line-height:1.6"><b style="color:var(--ink-2)">Inbox</b>: raw thoughts.<br><b style="color:var(--ink-2)">Ready</b>: things you could do.<br><b style="color:var(--ink-2)">Whenever</b>: no pressure, no date.<br>Tag energy so low-energy days still have wins.</p>
+              <p class="mut" style="font-size:14px;line-height:1.6"><b style="color:var(--ink-2)">Inbox</b>: raw thoughts.<br><b style="color:var(--ink-2)">Ready</b>: things you could do.<br><b style="color:var(--ink-2)">Planned</b>: shows up when its day, week or month arrives. Never overdue.<br><b style="color:var(--ink-2)">Whenever</b>: no pressure, no date.<br>Tag energy so low-energy days still have wins.</p>
+              <p class="mut" style="font-size:13px;line-height:1.6;margin-top:10px">💡 When capturing, end with <span class="mono" style="color:var(--ink-2)">today</span>, <span class="mono" style="color:var(--ink-2)">tomorrow</span>, <span class="mono" style="color:var(--ink-2)">this week</span>, <span class="mono" style="color:var(--ink-2)">next week</span>, <span class="mono" style="color:var(--ink-2)">this month</span> or <span class="mono" style="color:var(--ink-2)">next month</span>.<br>e.g. “Call mom tomorrow”</p>
             </div>
           </div>
         </div>
@@ -940,6 +1015,8 @@
     ui.lastView = v;
     const c2 = $("#capture");
     if (c2) { c2.value = capVal; if (capFocused) c2.focus(); }
+    const ed = $("[data-edit]");
+    if (ed) { ed.focus(); ed.setSelectionRange(ed.value.length, ed.value.length); }
     tick();
   };
 
@@ -1006,7 +1083,19 @@
         if (k === "est") t.est = EST_STEPS[(EST_STEPS.indexOf(t.est) + 1) % EST_STEPS.length];
         break;
       }
-      case "inbox-tab": ui.inboxTab = el.dataset.v; return render();
+      case "inbox-tab": ui.inboxTab = el.dataset.v; ui.whenFor = null; return render();
+      case "goto-ready": ui.inboxTab = "ready"; s.view = "inbox"; break;
+      case "edit-title": ui.editing = id; ui.whenFor = null; return render();
+      case "when": ui.whenFor = ui.whenFor === id ? null : id; return render();
+      case "plan": {
+        const k = el.dataset.k;
+        ui.whenFor = null;
+        if (k === "today") { if (!makeTop(id)) return render(); toast("Added to today ★"); break; }
+        if (k === "whenever") { later(id); break; }
+        if (k === "clear") { t.plan = null; toast("Plan cleared"); break; }
+        setPlan(t, makePlan(k));
+        break;
+      }
       case "inbox-energy": ui.inboxEnergy = Number(el.dataset.v); return render();
       case "pick": return openModal({ type: "pick" });
       case "reset-day": return openModal({ type: "reset" });
@@ -1178,6 +1267,7 @@
     if (el.dataset.note) { const t = sel.task(el.dataset.note); if (t) { t.note = el.value.trim(); save(); toast("📌 Saved for future you"); } }
     if (el.dataset.setting) { S().settings[el.dataset.setting] = Number(el.value); save(); render(); }
     if (el.hasAttribute("data-setting-name")) { S().name = el.value.trim(); save(); render(); }
+    if (el.dataset.planDate && el.value) { ui.whenFor = null; setPlan(sel.task(el.dataset.planDate), makePlan("date", el.value)); save(); render(); }
     if (el.hasAttribute("data-screen-import") && el.files.length) window.LOS.screen.importFiles([...el.files]);
     if (el.hasAttribute("data-import") && el.files[0]) {
       const r = new FileReader();
@@ -1189,7 +1279,22 @@
     }
   });
 
+  const saveEdit = (inp, keep = true) => {
+    const id = inp.dataset.edit;
+    if (ui.editing !== id) return;
+    ui.editing = null;
+    const t = sel.task(id), v = inp.value.trim();
+    if (keep && t && v && v !== t.title) { t.title = v; save(); toast("Renamed ✓"); }
+    render();
+  };
+  document.addEventListener("focusout", (e) => { if (e.target.dataset && e.target.dataset.edit) saveEdit(e.target); });
+
   document.addEventListener("keydown", (e) => {
+    if (e.target.dataset && e.target.dataset.edit) {
+      if (e.key === "Enter") { e.preventDefault(); saveEdit(e.target); }
+      if (e.key === "Escape") { e.preventDefault(); saveEdit(e.target, false); }
+      return;
+    }
     const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName);
     if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); $("#capture")?.focus(); return; }
     if (e.key === "/" && !typing && S().onboarded) { e.preventDefault(); $("#capture")?.focus(); return; }
