@@ -104,7 +104,7 @@ window.LOS = window.LOS || {};
     onboarded: false,
     name: "",
     areas: [],
-    settings: { sound: true, reduceMotion: false, hyperfocusMin: 90, dayEnds: 22, alerts: false },
+    settings: { sound: true, reduceMotion: false, hyperfocusMin: 90, dayEnds: 22, alerts: false, theme: "dark" },
     tasks: [],
     habits: [],
     checkins: {},

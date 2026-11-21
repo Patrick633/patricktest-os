@@ -197,8 +197,8 @@
     const r = (size - stroke) / 2, c = 2 * Math.PI * r;
     return `<div class="disc" style="width:${size}px;height:${size}px" data-disc="${key}" data-c="${c}">
       <svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
-        <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--card-3)" stroke-width="${stroke}"/>
-        <circle class="rem" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke="var(--lime)" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="0" style="transition:stroke-dashoffset 1s linear"/>
+        <circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" style="stroke:var(--card-3)" stroke-width="${stroke}"/>
+        <circle class="rem" cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" style="stroke:var(--lime);transition:stroke-dashoffset 1s linear" stroke-width="${stroke}" stroke-linecap="round" stroke-dasharray="${c}" stroke-dashoffset="0"/>
       </svg>
       <div class="lbl"><div><b data-left-short></b><small>left</small></div></div>
     </div>`;
@@ -232,7 +232,7 @@
       const c = Number(dEl.dataset.c);
       const circ = $(".rem", dEl);
       circ.setAttribute("stroke-dashoffset", String(c * (1 - frac)));
-      circ.setAttribute("stroke", left > 0 ? "var(--lime)" : "var(--pink)");
+      circ.style.stroke = left > 0 ? "var(--lime)" : "var(--pink)";
       const s = $("[data-left-short]", dEl);
       if (s) s.textContent = left > 0 ? (left < 1 ? "<1m" : fmtDur(Math.ceil(left)).replace(" min", "m")) : "0m";
     });
@@ -365,6 +365,7 @@
             <input id="capture" name="text" placeholder="Capture… try “call mom tomorrow”" autocomplete="off" maxlength="140" aria-label="Quick capture" />
             <kbd>⌘K</kbd>
           </form>
+          <button class="icon-btn theme-btn" data-action="theme-toggle" aria-label="Switch theme" title="${resolvedTheme() === "light" ? "Morning mode · switch to Night" : "Night mode · switch to Morning"}">${resolvedTheme() === "light" ? "☀️" : "🌙"}</button>
           <button class="icon-btn" data-action="settings" aria-label="Settings">${I.gear}</button>
         </header>
         <div class="daybar"><span data-daytext>${dayText()}</span><div class="track"><i style="width:${dayInfo().pct * 100}%"></i></div></div>
@@ -445,7 +446,7 @@
       <div class="c">
         <h3>Wins today</h3>
         <div class="wins"><b>${w}</b><span class="mut">${w ? "things done. That counts." : "Every tiny thing counts. Even a mini habit."}</span></div>
-        ${done.length ? `<div class="mini-list" style="margin-top:12px">${done.slice(0, 4).map((t) => `<div class="mini-item"><span style="color:var(--lime)">${I.check}</span><span class="t">${esc(t.title)}</span></div>`).join("")}</div>` : ""}
+        ${done.length ? `<div class="mini-list" style="margin-top:12px">${done.slice(0, 4).map((t) => `<div class="mini-item"><span style="color:var(--accent-ink)">${I.check}</span><span class="t">${esc(t.title)}</span></div>`).join("")}</div>` : ""}
       </div>`;
   };
 
@@ -734,7 +735,7 @@
   // ================================================================= HABITS
   const habitsView = () => {
     const hs = S().habits;
-    const cols = ["#1f1f29", "#3b4a1a", "#6f9a22", "#a6d93a", "#c8ff4d"];
+    const cols = ["var(--heat-0)", "var(--heat-1)", "var(--heat-2)", "var(--heat-3)", "var(--heat-4)"];
     const start = addDays(new Date(), -(26 * 7 - 1) - new Date().getDay() + 6);
     let cells = "";
     for (let i = 0; i < 26 * 7; i++) {
@@ -783,8 +784,8 @@
       const pts = days.map((d, i) => { const v = S().checkins[dkey(d)]?.[key]; return v == null ? null : [px(i), H - 10 - (v / max) * (H - 30)]; });
       let dStr = "", started = false;
       pts.forEach((p) => { if (!p) { started = false; return; } dStr += `${started ? "L" : "M"}${p[0].toFixed(1)} ${p[1].toFixed(1)} `; started = true; });
-      const dots = pts.filter(Boolean).map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" fill="${color}"/>`).join("");
-      return `<path d="${dStr}" fill="none" stroke="${color}" stroke-width="${dash ? 1.8 : 2.8}" stroke-dasharray="${dash}" stroke-opacity="${dash ? 0.75 : 1}" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
+      const dots = pts.filter(Boolean).map((p) => `<circle cx="${p[0]}" cy="${p[1]}" r="3.5" style="fill:${color}"/>`).join("");
+      return `<path d="${dStr}" fill="none" style="stroke:${color}" stroke-width="${dash ? 1.8 : 2.8}" stroke-dasharray="${dash}" stroke-opacity="${dash ? 0.75 : 1}" stroke-linejoin="round" stroke-linecap="round"/>${dots}`;
     };
     // insight: wins on high vs low energy days
     const winsOn = (k) => S().tasks.filter((t) => t.doneAt && dkey(new Date(t.doneAt)) === k).length + S().habits.filter((h) => h.log[k]).length;
@@ -812,10 +813,10 @@
             <div class="c chart">
               <h3>Last 30 days</h3>
               <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
-                ${[0.25, 0.5, 0.75].map((g) => `<line x1="0" x2="${W}" y1="${H * g}" y2="${H * g}" stroke="#22222c"/>`).join("")}
-                ${line("energy", 3, "#c8ff4d", "5 5")}${line("mood", 4, "#8b7cff")}
+                ${[0.25, 0.5, 0.75].map((g) => `<line x1="0" x2="${W}" y1="${H * g}" y2="${H * g}" style="stroke:var(--chart-grid)"/>`).join("")}
+                ${line("energy", 3, "var(--accent-ink)", "5 5")}${line("mood", 4, "var(--vio)")}
               </svg>
-              <div class="legend"><i style="background:var(--vio)"></i> mood <i style="background:var(--lime);margin-left:8px"></i> energy</div>
+              <div class="legend"><i style="background:var(--vio)"></i> mood <i style="background:var(--accent-ink);margin-left:8px"></i> energy</div>
             </div>
             ${window.LOS.screen.logCard(true)}
             <div class="c"><h3>Insight</h3><p style="line-height:1.6;color:var(--ink-2)">${insight}</p></div>
@@ -966,6 +967,9 @@
         <h2>Settings</h2>
         <div style="margin-top:12px">
           <div class="set-row"><div><b>Name</b><small>How Life OS greets you</small></div><input class="field" style="width:180px" data-setting-name value="${esc(S().name)}" maxlength="24" /></div>
+          <div class="set-row" style="display:block"><div style="margin-bottom:10px"><b>Theme</b><small>Night for evenings, Morning for daylight</small></div>
+            <div class="theme-pick">${[["dark", "🌙 Night", "Dark", "#0a0a0d"], ["light", "☀️ Morning", "Off-white", "#f6f3ec"], ["auto", "🌗 Auto", "By time of day", "linear-gradient(90deg,#f6f3ec 50%,#0a0a0d 50%)"]].map(([v, l, h, bg]) => `
+              <button class="${(st.theme || "dark") === v ? "on" : ""}" data-action="theme" data-v="${v}"><span class="sw" style="background:${bg}"></span>${l}<small>${h}</small></button>`).join("")}</div></div>
           ${sw("sound", "Sounds", "A short chime when you finish things")}
           ${sw("reduceMotion", "Calm mode", "Fewer animations and no confetti")}
           ${sw("alerts", "Desktop alerts", "Notify when a timer ends or you've hyperfocused")}
@@ -992,9 +996,25 @@
     if (inp) inp.focus();
   };
 
+  // ================================================================= THEME
+  /** "dark" (Night), "light" (Morning) or "auto" (Morning 6:00–17:59, Night otherwise) */
+  const resolvedTheme = () => {
+    const t = S().settings.theme || "dark";
+    if (t !== "auto") return t;
+    const h = new Date().getHours();
+    return h >= 6 && h < 18 ? "light" : "dark";
+  };
+  const applyTheme = () => {
+    const r = resolvedTheme();
+    document.documentElement.dataset.theme = r;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = r === "light" ? "#f6f3ec" : "#0a0a0d";
+  };
+
   // ================================================================= RENDER
   const render = () => {
     document.documentElement.classList.toggle("calm", !!S().settings.reduceMotion);
+    applyTheme();
     const app = $("#app");
     const cap = $("#capture");
     const capVal = cap ? cap.value : "";
@@ -1175,6 +1195,12 @@
       case "del-event": s.schedule = s.schedule.filter((x) => x.id !== id); break;
 
       // settings & modals
+      case "theme-toggle": {
+        s.settings.theme = resolvedTheme() === "light" ? "dark" : "light";
+        toast(s.settings.theme === "light" ? "☀️ Morning mode" : "🌙 Night mode");
+        break;
+      }
+      case "theme": s.settings.theme = el.dataset.v; save(); render(); renderModal(); return;
       case "toggle-setting": {
         const k = el.dataset.k;
         s.settings[k] = !s.settings[k];

@@ -279,19 +279,19 @@ window.LOS = window.LOS || {};
     let bars = "";
     data.forEach((d, i) => {
       const x = i * bw + bw * 0.2, w = bw * 0.6;
-      if (d.total == null) bars += `<rect x="${x}" y="${H - 22}" width="${w}" height="4" rx="2" fill="#22222c"/>`;
+      if (d.total == null) bars += `<rect x="${x}" y="${H - 22}" width="${w}" height="4" rx="2" style="fill:var(--chart-grid)"/>`;
       else {
         const ph = d.phone || 0, cp = d.comp || 0;
-        bars += `<rect x="${x}" y="${y(ph + cp)}" width="${w}" height="${Math.max(0, y(ph) - y(ph + cp))}" rx="3" fill="#4dd8ff" fill-opacity="${d.compSrc === "browser" ? 0.5 : 0.9}"/>`;
-        bars += `<rect x="${x}" y="${y(ph)}" width="${w}" height="${Math.max(0, H - 18 - y(ph))}" rx="3" fill="#8b7cff"/>`;
+        bars += `<rect x="${x}" y="${y(ph + cp)}" width="${w}" height="${Math.max(0, y(ph) - y(ph + cp))}" rx="3" style="fill:var(--cyan)" fill-opacity="${d.compSrc === "browser" ? 0.5 : 0.9}"/>`;
+        bars += `<rect x="${x}" y="${y(ph)}" width="${w}" height="${Math.max(0, H - 18 - y(ph))}" rx="3" style="fill:var(--vio)"/>`;
       }
-      bars += `<text x="${x + w / 2}" y="${H - 4}" text-anchor="middle" font-size="10" fill="#74748a" font-family="JetBrains Mono">${new Date(d.k + "T12:00").getDate()}</text>`;
+      bars += `<text x="${x + w / 2}" y="${H - 4}" text-anchor="middle" font-size="10" style="fill:var(--mut)" font-family="JetBrains Mono">${new Date(d.k + "T12:00").getDate()}</text>`;
     });
     const vline = data.map((d, i) => `${i ? "L" : "M"}${(i * bw + bw / 2).toFixed(1)} ${y(d.vid).toFixed(1)}`).join(" ");
-    const lim = SC().softLimit ? `<line x1="0" x2="${W}" y1="${y(SC().softLimit)}" y2="${y(SC().softLimit)}" stroke="#c8ff4d" stroke-opacity=".45" stroke-dasharray="4 5"/>` : "";
+    const lim = SC().softLimit ? `<line x1="0" x2="${W}" y1="${y(SC().softLimit)}" y2="${y(SC().softLimit)}" style="stroke:var(--accent-ink)" stroke-opacity=".5" stroke-dasharray="4 5"/>` : "";
     return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" style="width:100%;height:190px;display:block;overflow:visible">${lim}${bars}
-      ${vids.length ? `<path d="${vline}" fill="none" stroke="#ff5c8a" stroke-width="2" stroke-linejoin="round"/>` : ""}</svg>
-      <div class="legend"><i style="background:var(--vio)"></i> iPhone <i style="background:var(--cyan);margin-left:8px"></i> Mac / browser <i style="background:var(--pink);margin-left:8px"></i> videos (est.)${SC().softLimit ? `<i style="background:none;border-top:2px dashed var(--lime);border-radius:0;height:0;width:14px;margin-left:8px"></i> soft limit` : ""}</div>`;
+      ${vids.length ? `<path d="${vline}" fill="none" style="stroke:var(--pink)" stroke-width="2" stroke-linejoin="round"/>` : ""}</svg>
+      <div class="legend"><i style="background:var(--vio)"></i> iPhone <i style="background:var(--cyan);margin-left:8px"></i> Mac / browser <i style="background:var(--pink);margin-left:8px"></i> videos (est.)${SC().softLimit ? `<i style="background:none;border-top:2px dashed var(--accent-ink);border-radius:0;height:0;width:14px;margin-left:8px"></i> soft limit` : ""}</div>`;
   };
 
   const hourChart = (vids) => {

@@ -1,7 +1,7 @@
 # Life OS
 
 An **ADHD-friendly personal operating system** for focus, habits, energy and tasks.
-Dark "command center" look. It runs entirely in the browser: no build step, no account.
+Dark "command center" look, with a warm off-white Morning theme. It runs entirely in the browser: no build step, no account.
 
 ## Design principles
 
@@ -29,7 +29,8 @@ Dark "command center" look. It runs entirely in the browser: no build step, no a
 - **Screen**: screen time and video history, without judgment (see below).
 - **Review**: weekly stats, estimate accuracy ("things take you 1.4× your estimates") and 3 guided questions.
 - **Focus mode**: full-screen shrinking timer, next step, +5 min, generated brown noise, stop and save a note.
-- **Settings**: name, sounds, calm mode, desktop alerts, hyperfocus check, when the day ends, export/import, delete all.
+- **Themes**: 🌙 Night (dark), ☀️ Morning (warm off-white) or 🌗 Auto (Morning 6:00–17:59). Toggle from the top bar or Settings.
+- **Settings**: name, theme, sounds, calm mode, desktop alerts, hyperfocus check, when the day ends, export/import, delete all.
 
 ## Screen time & videos (Mac + iPhone)
 
