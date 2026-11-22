@@ -26,6 +26,10 @@ Dark "command center" look, with a warm off-white Morning theme. It runs entirel
 - **Inbox**: Inbox / Ready / Whenever / Done lists, energy filter, one-tap tags (area, energy, time estimate), brain dump.
 - **Habits**: full or mini check-ins, 7-day row, 26-week consistency heatmap.
 - **Check-in**: mood and energy, notes, 30-day chart and an insight.
+- **Breaks**: after each focus session Life OS offers a short break (a long one every 4 sessions), with break ideas that don't turn into a rabbit hole, then brings you back to the same task. Breaks show up in the time log.
+- **Board**: drag brain-dump cards between Inbox, Today, Ready, Planned, Whenever and Done, or between your areas. Works with the mouse and with press-and-drag on iPhone; tap a card to move it with one tap.
+- **Areas**: create your own life areas (name, emoji, color) and see open tasks, habits and projects per area.
+- **iPhone Reminders** (via the Shortcuts app): send a task to Reminders, or paste your reminders into the Inbox.
 - **Time log** ("Doing now"): one tap to say what you're doing (work, quality time with your wife, church, commute, rest…). Switching closes the previous activity. Log things afterwards, edit times, and rename, re-emoji or remove any activity. Today shows a day bar and totals by category, Wins shows "Also today…", Review shows where your week went, and a time block happening now gets a ▶ Track button.
 - **Projects**: long goals (e.g. a 6-month study plan) split into phases on a timeline. Only the current phase is open; steps go to Today with one tap and get checked off when you finish the task. Shows progress vs time elapsed and weekly study hours.
 - **Spirit**: verse of the day (KJV or Almeida ARC) or stoic/mindful reflections, Bible reading plans that move forward when you read (never by the calendar), gratitude, prayer list with answered prayers, quiet-time timer.
@@ -89,6 +93,9 @@ js/news.js        cybersecurity news brief and CISA KEV
 js/screen.js      screen time: log, Takeout/Netflix import, extension bridge, insights
 js/sync.js        cloud sync (Supabase REST, email-code login, backups)
 js/calendar.js    .ics reminders and time blocks for the phone's Calendar
+js/areas.js       custom life areas
+js/board.js       drag-and-drop board
+js/breaks.js      break timer
 js/app.js         views, focus mode, modals, events
 sw.js             service worker: offline, notifications, push
 sync-config.js    Supabase URL + anon key (public by design)

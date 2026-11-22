@@ -83,6 +83,50 @@ window.LOS = window.LOS || {};
     app().toast(`📅 ${events.length} item${events.length > 1 ? "s" : ""} ready. Tap “Add All”.`, { ms: 5000 });
   };
 
+  // ---------------------------------------------------------------- iPhone Reminders (through the Shortcuts app)
+  // A web app can't open the Reminders database directly, so two small Shortcuts act as the bridge:
+  //  · "Life OS to Reminders" receives a task from Life OS and adds it to Reminders.
+  //  · "Reminders to Life OS" copies your open reminders; Life OS pastes them into the Inbox.
+  const SHORTCUT_TO = "Life OS to Reminders";
+  const remindersOn = () => !!S().settings.remindersBridge;
+  const sendToReminders = (t) => {
+    const due = t.plan && t.plan.scope === "day" ? `${t.plan.key} 09:00` : t.topDate === today() ? `${today()} 18:00` : "";
+    const text = [t.title, due].filter(Boolean).join("\n"); // line 1: title, line 2: due date (optional)
+    window.location.href = `shortcuts://run-shortcut?name=${encodeURIComponent(SHORTCUT_TO)}&input=text&text=${encodeURIComponent(text)}`;
+  };
+  const pasteFromReminders = async () => {
+    let text = "";
+    try { text = await navigator.clipboard.readText(); } catch { app().toast("Couldn't read the clipboard. Allow paste when asked, or paste into Brain dump."); return; }
+    const lines = String(text).split(/\r?\n/).map((l) => l.replace(/^\s*([-*•◦▪︎]|\[ ?\]|☐|\d+[.)])\s*/, "").trim()).filter((l) => l && l.length <= 140);
+    if (!lines.length) { app().toast("Clipboard is empty. Run the “Reminders to Life OS” shortcut first."); return; }
+    app().capture(lines.join("\n"));
+  };
+  const remindersHTML = () => `
+    <div class="set-row" style="display:block">
+      <div class="row" style="justify-content:space-between;gap:12px">
+        <div><b>📝 iPhone Reminders</b><small>Send tasks to Reminders and bring reminders into Life OS, through the Shortcuts app.</small></div>
+        <button class="switch ${remindersOn() ? "on" : ""}" data-action="rem-toggle" role="switch" aria-checked="${remindersOn()}" aria-label="Reminders bridge"></button>
+      </div>
+      <details class="how"${remindersOn() ? "" : " open"}><summary>Set up the 2 shortcuts (once, ~3 min)</summary>
+        <p><b>1 · “${SHORTCUT_TO}”</b> (Life OS → Reminders)</p>
+        <ol>
+          <li>Open <b>Shortcuts</b> → <b>+</b> → name it exactly <span class="mono">${SHORTCUT_TO}</span>.</li>
+          <li>Tap the <b>ⓘ</b> → turn on <b>Show in Share Sheet</b> → Receive <b>Text</b>.</li>
+          <li>Add action <b>Split Text</b> (Shortcut Input, by <b>New Lines</b>).</li>
+          <li>Add <b>Get Item from List</b> → <b>First Item</b>. Then <b>Get Item from List</b> → <b>Last Item</b> (from Split Text).</li>
+          <li>Add <b>Add New Reminder</b>: title = <i>First Item</i>, list = your choice, turn on <b>Remind Me</b> on a day/time = <i>Last Item</i>.</li>
+        </ol>
+        <p><b>2 · “Reminders to Life OS”</b> (Reminders → Life OS)</p>
+        <ol>
+          <li>New shortcut → <b>Find Reminders</b> where <b>Is Not Completed</b> (and List = the one you use as an inbox).</li>
+          <li>Add <b>Get Details of Reminders</b> → <b>Title</b>, then <b>Combine Text</b> with <b>New Lines</b>.</li>
+          <li>Add <b>Copy to Clipboard</b>. Optional: <b>Show Notification</b> “Copied, open Life OS”.</li>
+          <li>Run it, open Life OS → Inbox → <b>📋 Paste from Reminders</b>.</li>
+        </ol>
+        <p class="mut">Then turn on the switch above: each task gets a “→ Reminders” button.</p>
+      </details>
+    </div>`;
+
   // ---------------------------------------------------------------- settings UI
   const settingsHTML = () => {
     const perm = "Notification" in window ? Notification.permission : "unsupported";
@@ -107,10 +151,14 @@ window.LOS = window.LOS || {};
           <button class="btn sm primary" data-action="cal-reminders">📅 Add reminders to Calendar</button>
           <button class="btn sm ghost" data-action="cal-plan">📅 Add time blocks & planned tasks</button>
         </div>
-      </div>`;
+      </div>
+      ${remindersHTML()}`;
   };
 
   const act = (a, el) => {
+    if (a === "rem-toggle") { S().settings.remindersBridge = !remindersOn(); app().save(); app().renderModal(); app().render(); return true; }
+    if (a === "rem-send") { const t = window.LOS.sel.task(el.dataset.id); if (t) sendToReminders(t); return true; }
+    if (a === "rem-paste") { pasteFromReminders(); return true; }
     if (!a.startsWith("cal-")) return false;
     const A = app();
     switch (a) {
@@ -143,5 +191,5 @@ window.LOS = window.LOS || {};
     return true;
   };
 
-  window.LOS.calendar = { settingsHTML, act, change, exportDay, exportReminders, _ics: ics, _reminders: reminders };
+  window.LOS.calendar = { remindersOn, settingsHTML, act, change, exportDay, exportReminders, _ics: ics, _reminders: reminders };
 })();

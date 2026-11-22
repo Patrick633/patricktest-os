@@ -320,7 +320,7 @@ window.LOS = window.LOS || {};
           <p class="mut" style="font-size:12px;margin-top:6px">${(PHASE_NAMES[d.phases] || []).join(" → ")} · rename anytime</p></div>
         <div><div class="label" style="margin-bottom:6px">Weekly study time</div>
           <div class="seg">${[[0, "None"], [2, "2h"], [5, "5h"], [8, "8h"], [10, "10h"]].map(([v, l]) => `<button type="button" class="${Number(d.hours) === v ? "on" : ""}" data-action="p-draft" data-k="hours" data-v="${v}">${l}</button>`).join("")}</div></div>
-        <select class="field" name="area" data-draft>${Object.entries(AREAS).map(([id, a]) => `<option value="${id}" ${d.area === id ? "selected" : ""}>${a.emoji} ${a.name}</option>`).join("")}</select>
+        <select class="field" name="area" data-draft>${Object.entries(AREAS).map(([id, a]) => `<option value="${id}" ${d.area === id ? "selected" : ""}>${esc(a.emoji)} ${esc(a.name)}</option>`).join("")}</select>
         <div class="foot"><button type="button" class="btn quiet" data-action="close">Cancel</button><button class="btn primary">Create project</button></div>
       </form>`;
   };

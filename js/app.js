@@ -21,6 +21,7 @@
     projects: sv('<path d="M3 7h18M3 12h12M3 17h7"/><circle cx="19" cy="17" r="2.5"/>', 20),
     spirit: sv('<path d="M12 3c2 3 5 4.5 5 8.5a5 5 0 0 1-10 0C7 7.5 10 6 12 3z"/><path d="M12 13v8M9 18h6"/>', 20),
     news: sv('<path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/><path d="M9 12l2 2 4-4"/>', 20),
+    areas: sv('<circle cx="7" cy="7" r="3"/><circle cx="17" cy="7" r="3"/><circle cx="7" cy="17" r="3"/><circle cx="17" cy="17" r="3"/>', 20),
     more: sv('<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>', 20),
     screen: sv('<rect x="6" y="2" width="12" height="20" rx="3"/><path d="M11 18h2"/>', 20),
     gear: sv('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
@@ -44,7 +45,7 @@
   };
   // Primary tabs stay visible; the rest live under "More" (fewer choices = less overwhelm).
   const TABS = [["now", "Now"], ["today", "Today"], ["inbox", "Inbox"], ["projects", "Projects"], ["spirit", "Spirit"], ["news", "News"]];
-  const MORE = [["habits", "Habits"], ["checkin", "Check-in"], ["screen", "Screen"], ["review", "Review"]];
+  const MORE = [["habits", "Habits"], ["areas", "Areas"], ["checkin", "Check-in"], ["screen", "Screen"], ["review", "Review"]];
   const MOBILE_MORE = ["spirit", "news"]; // on phones these also move into More
   const EST_STEPS = [null, 5, 15, 25, 45, 60, 90];
   const HABIT_EMOJIS = ["💧", "🏃", "🧘", "📓", "📚", "🎯", "💰", "💬", "😴", "🥗", "💊", "🌿", "☀️", "🎸", "🧹", "🦷"];
@@ -214,7 +215,8 @@
     save();
     if (!silent) {
       render();
-      toast(`Session saved · ${fmtDur(min)}${t?.note ? ". Your note is waiting for next time." : ""}`);
+      const b = window.LOS.breaks.suggested();
+      toast(`Session saved · ${fmtDur(min)}. Time for a ${b.kind === "long" ? "long " : ""}break?`, { action: { label: `☕ ${b.min} min`, fn: () => window.LOS.breaks.start(b.min, b.kind, t ? t.id : null) }, ms: 7000 });
     }
   };
 
@@ -273,7 +275,9 @@
       if (S().settings.sound) fx.bell();
       notify("Time's up", t ? `"${t.title}": keep going, take a break, or mark it done.` : "");
       toast(f.mode === "5" ? "5 minutes done. You started! Keep going?" : "Time's up. Keep going, break, or done?", {
-        action: { label: f.mode === "5" ? "+20 min" : "+10 min", fn: () => { f.dur += f.mode === "5" ? 20 : 10; f.ended = false; f.mode = "full"; save(); render(); } },
+        action: f.mode === "5"
+          ? { label: "+20 min", fn: () => { f.dur += 20; f.ended = false; f.mode = "full"; save(); render(); } }
+          : { label: "☕ Break", fn: () => { const b = window.LOS.breaks.suggested(); window.LOS.breaks.start(b.min, b.kind, f.taskId); } },
         ms: 6000,
       });
       if (!ui.focusOpen) render();
@@ -328,8 +332,8 @@
         <p class="lead">Pick a few. We'll add tiny starter habits, each with a "mini" version for low-energy days. You can change everything later.</p>
         <div class="areas">${Object.entries(AREAS).map(([id, a]) => `
           <button class="area ${ui.onbAreas.includes(id) ? "on" : ""}" style="--ac:${a.color}" data-action="onb-area" data-id="${id}">
-            <span class="e">${a.emoji}</span><b>${a.name}</b>
-            <small>${HABIT_TEMPLATES[id].map((h) => h[1]).join(" · ")}</small>
+            <span class="e">${esc(a.emoji)}</span><b>${esc(a.name)}</b>
+            <small>${(HABIT_TEMPLATES[id] || []).map((h) => h[1]).join(" · ")}</small>
           </button>`).join("")}</div>`;
     } else if (st === 2) {
       body = `
@@ -364,7 +368,7 @@
     const s = S();
     s.name = ui.onbName.trim() || s.name || "";
     s.areas = [...ui.onbAreas];
-    ui.onbAreas.forEach((a) => HABIT_TEMPLATES[a].forEach(([e, n, m]) => s.habits.push({ id: uid(), emoji: e, name: n, mini: m, area: a, log: {} })));
+    ui.onbAreas.forEach((a) => (HABIT_TEMPLATES[a] || []).forEach(([e, n, m]) => s.habits.push({ id: uid(), emoji: e, name: n, mini: m, area: a, log: {} })));
     const lines = ui.onbDump.split("\n").map((l) => l.trim()).filter(Boolean);
     const byIndex = {};
     // addTask prepends, so add in reverse to keep the typed order
@@ -421,7 +425,7 @@
               <button class="check" data-action="done" data-id="${t.id}" aria-label="Mark done">${I.check}</button>
               <button class="t" data-action="set-current" data-id="${t.id}">
                 <span>${esc(t.title)}</span>
-                <small>${[t.area ? `<span class="dot" style="background:${areaColor(t.area)}"></span> ${areaOf(t.area).name}` : "", t.est ? `~${fmtDur(t.est)}` : "", t.steps.length ? `${t.steps.filter((s) => s.done).length}/${t.steps.length} steps` : ""].filter(Boolean).join(" · ") || "Tap to focus on this"}</small>
+                <small>${[areaOf(t.area) ? `<span class="dot" style="background:${areaColor(t.area)}"></span> ${esc(areaOf(t.area).name)}` : "", t.est ? `~${fmtDur(t.est)}` : "", t.steps.length ? `${t.steps.filter((s) => s.done).length}/${t.steps.length} steps` : ""].filter(Boolean).join(" · ") || "Tap to focus on this"}</small>
               </button>
               <button class="tiny" data-action="drop-top" data-id="${t.id}" title="Remove from today">${I.x}</button>
             </div>`).join("")}
@@ -497,7 +501,7 @@
     const sub = [`${sel.winsToday()} ${sel.winsToday() === 1 ? "win" : "wins"} today`, lifeMin ? `${fmtDur(lifeMin)} of life logged` : "", `${top.length} of ${MAX_TOP} priorities left`, ev ? `next: ${esc(ev.label)} ${relMin(toMin(ev.time) - nowMin())}` : ""].filter(Boolean).join(" · ");
     const nudge = f && f.nudged ? `
       <div class="nudge">🧠 <span class="sp">You've been focused for <b>${fmtDur(focusElapsed())}</b>. Water, stretch, bathroom? Hyperfocus is a superpower, but bodies need breaks.</span>
-        <button class="btn sm ghost" data-action="focus-stop">Take a break</button>
+        <button class="btn sm ghost" data-action="break-now">☕ Take a break</button>
         <button class="btn sm quiet" data-action="nudge-ok">Keep going</button></div>` : "";
 
     let card;
@@ -522,7 +526,7 @@
           <div class="meta">
             <span class="pill">Right now</span>
             ${window.LOS.projects.projectOf(t) ? `<button class="pill vio" data-action="p-open" data-id="${t.projectId}">${window.LOS.projects.projectOf(t).emoji} ${esc(window.LOS.projects.projectOf(t).title)}</button>` : ""}
-            ${area ? `<span class="pill gray"><span class="dot" style="background:${area.color}"></span> ${area.name}</span>` : ""}
+            ${area ? `<span class="pill gray"><span class="dot" style="background:${area.color}"></span> ${esc(area.name)}</span>` : ""}
             ${t.est ? `<span class="pill gray">~${fmtDur(t.est)}</span>` : ""}
             ${t.energy ? `<span class="pill gray">${energyOf(t.energy).e} ${energyOf(t.energy).l} energy</span>` : ""}
           </div>
@@ -549,6 +553,7 @@
                  <button class="btn ghost" data-action="focus-full" data-id="${t.id}">Focus ${fmtDur(t.est || 25)}</button>`}
             <button class="btn ghost" data-action="stuck" data-id="${t.id}">😵‍💫 I'm stuck</button>
             <span class="sp"></span>
+            <button class="btn quiet" data-action="break-now" title="Take a short break">☕</button>
             <button class="btn quiet" data-action="later" data-id="${t.id}">Not now</button>
             ${running ? "" : `<button class="btn ghost" data-action="done" data-id="${t.id}">✓ Done</button>`}
           </div>
@@ -610,7 +615,7 @@
       const past = en <= n, live = st <= n && en > n;
       tl += `<div class="ev ${past ? "past" : ""}" style="--c:${areaColor(e.area)}">
         <span class="time">${e.time}</span>
-        <span class="t">${esc(e.label)}<small>${fmtDur(e.dur || 30)}${e.area ? ` · ${areaOf(e.area).name}` : ""}</small></span>
+        <span class="t">${esc(e.label)}<small>${fmtDur(e.dur || 30)}${areaOf(e.area) ? ` · ${esc(areaOf(e.area).name)}` : ""}</small></span>
         ${past ? "" : `<span class="rel">${live ? "now" : relMin(st - n)}</span>`}
         <button class="tiny x" data-action="del-event" data-id="${e.id}" aria-label="Remove">${I.x}</button>
       </div>`;
@@ -639,7 +644,7 @@
                 <input class="field" type="time" name="time" required value="${String(Math.min(23, new Date().getHours() + 1)).padStart(2, "0")}:00" />
                 <input class="field" name="label" placeholder="What?" required maxlength="60" />
                 <select class="field" name="dur">${[15, 30, 45, 60, 90, 120].map((d) => `<option value="${d}" ${d === 30 ? "selected" : ""}>${fmtDur(d)}</option>`).join("")}</select>
-                <select class="field" name="area"><option value="">Area</option>${Object.entries(AREAS).map(([id, a]) => `<option value="${id}">${a.name}</option>`).join("")}</select>
+                <select class="field" name="area"><option value="">Area</option>${Object.entries(AREAS).map(([id, a]) => `<option value="${id}">${esc(a.emoji)} ${esc(a.name)}</option>`).join("")}</select>
                 <button class="btn sm primary">Add</button>
               </form>
             </div>
@@ -691,7 +696,7 @@
 
   // ================================================================= INBOX
   const cycleLabel = {
-    area: (t) => (t.area ? `<span class="dot" style="background:${areaColor(t.area)}"></span>${areaOf(t.area).name}` : "+ area"),
+    area: (t) => (areaOf(t.area) ? `<span class="dot" style="background:${areaColor(t.area)}"></span>${esc(areaOf(t.area).name)}` : "+ area"),
     energy: (t) => (t.energy ? `${energyOf(t.energy).e} ${energyOf(t.energy).l}` : "+ energy"),
     est: (t) => (t.est ? `⏱ ${fmtDur(t.est)}` : "+ time"),
   };
@@ -715,6 +720,7 @@
           ${t.topDate === today() ? "" : `<button class="tiny lime" data-action="add-top" data-id="${t.id}">★ Today</button>`}
           <button class="tiny" data-action="when" data-id="${t.id}">📅 When</button>
           <button class="tiny" data-action="stuck" data-id="${t.id}">Break down</button>
+          ${window.LOS.calendar.remindersOn() ? `<button class="tiny" data-action="rem-send" data-id="${t.id}" title="Add to iPhone Reminders">→ Reminders</button>` : ""}
           <button class="tiny" data-action="del-task" data-id="${t.id}" aria-label="Delete">${I.x}</button>
         </div>`}
       </div>
@@ -739,7 +745,9 @@
     } else body = list.map((t) => taskCard(t, tab)).join("");
     return `
       <section class="view" data-view="inbox">
-        <div class="hero"><div><h1>Inbox. <span>Out of your head.</span></h1><p>Capture without thinking. Sort later, or never. Nothing here is "overdue". Click a task's name to edit it.</p></div></div>
+        <div class="hero"><div><h1>Inbox. <span>Out of your head.</span></h1><p>Capture without thinking. Sort later, or never. Nothing here is "overdue".${S().settings.inboxMode === "board" ? "" : " Click a task's name to edit it."}</p></div>
+          <div class="seg"><button class="${S().settings.inboxMode !== "board" ? "on" : ""}" data-action="inbox-mode" data-v="list">☰ List</button><button class="${S().settings.inboxMode === "board" ? "on" : ""}" data-action="inbox-mode" data-v="board">▦ Board</button></div></div>
+        ${S().settings.inboxMode === "board" ? window.LOS.board.view() : `
         <div class="grid g-now">
           <div class="c">
             <div class="row" style="justify-content:space-between;flex-wrap:wrap;margin-bottom:16px">
@@ -759,6 +767,7 @@
               <form data-form="dump">
                 <textarea class="field" name="text" placeholder="One thing per line…&#10;Call mom&#10;Renew passport&#10;Idea: weekend trip" style="min-height:160px"></textarea>
                 <button class="btn primary" style="margin-top:10px;width:100%">Add all to Inbox</button>
+                ${window.LOS.calendar.remindersOn() ? `<button type="button" class="btn ghost" style="margin-top:8px;width:100%" data-action="rem-paste">📋 Paste from Reminders</button>` : ""}
               </form>
             </div>
             <div class="c">
@@ -768,6 +777,7 @@
             </div>
           </div>
         </div>
+      `}
       </section>`;
   };
 
@@ -805,7 +815,7 @@
                 <div class="emoji-row">${HABIT_EMOJIS.map((e) => `<button type="button" class="${ui.habitEmoji === e ? "on" : ""}" data-action="habit-emoji" data-e="${e}">${e}</button>`).join("")}</div>
                 <input class="field" name="name" placeholder="Habit (e.g. Walk 20 min)" required maxlength="40" />
                 <input class="field" name="mini" placeholder="Mini version for hard days (e.g. Walk to the corner)" maxlength="40" />
-                <select class="field" name="area"><option value="">Area (optional)</option>${Object.entries(AREAS).map(([id, a]) => `<option value="${id}">${a.name}</option>`).join("")}</select>
+                <select class="field" name="area"><option value="">Area (optional)</option>${Object.entries(AREAS).map(([id, a]) => `<option value="${id}">${esc(a.emoji)} ${esc(a.name)}</option>`).join("")}</select>
                 <button class="btn primary">Add habit</button>
               </form>
             </div>
@@ -928,6 +938,7 @@
           <button class="btn primary big" data-action="done" data-id="${t?.id}">✓ Done</button>
           <button class="btn ghost" data-action="focus-extend">+5 min</button>
           <button class="btn ghost" data-action="noise">${fx.noisePlaying() ? "🔇 Stop brown noise" : "🎧 Brown noise"}</button>
+          <button class="btn ghost" data-action="break-now">☕ Break</button>
           <button class="btn ghost" data-action="focus-stop">Stop &amp; save</button>
           <button class="btn quiet" data-action="focus-min">Minimize</button>
         </div>
@@ -1017,6 +1028,7 @@
           ${sw("alerts", "Notifications", "Notify when a timer ends or you've hyperfocused")}
           <div class="set-row"><div><b>Hyperfocus check</b><small>Gentle nudge after focusing this long</small></div>
             <select class="field" style="width:130px" data-setting="hyperfocusMin">${[[0, "Off"], [45, "45 min"], [60, "1h"], [90, "1h 30m"], [120, "2h"]].map(([v, l]) => `<option value="${v}" ${st.hyperfocusMin === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+          ${window.LOS.breaks.settingsHTML()}
           <div class="set-row"><div><b>My day ends at</b><small>Used for the "time left today" bar</small></div>
             <select class="field" style="width:130px" data-setting="dayEnds">${[19, 20, 21, 22, 23, 24].map((v) => `<option value="${v}" ${st.dayEnds === v ? "selected" : ""}>${v}:00</option>`).join("")}</select></div>
           <div class="set-row"><div><b>Your data</b><small>Stored only in this browser</small></div>
@@ -1074,9 +1086,9 @@
       return;
     }
     const views = { now: nowView, today: todayView, inbox: inboxView, habits: habitsView, checkin: checkinView, screen: () => window.LOS.screen.view(), review: reviewView,
-      projects: () => window.LOS.projects.view(), spirit: () => window.LOS.spirit.view(), news: () => window.LOS.news.view() };
+      areas: () => window.LOS.areas.view(), projects: () => window.LOS.projects.view(), spirit: () => window.LOS.spirit.view(), news: () => window.LOS.news.view() };
     const v = views[S().view] ? S().view : "now";
-    app.innerHTML = shell(views[v]()) + (S().focus && ui.focusOpen ? focusOverlay() : "");
+    app.innerHTML = shell(views[v]()) + (S().breakRun ? window.LOS.breaks.overlay() : S().focus && ui.focusOpen ? focusOverlay() : "");
     const same = ui.lastView === v;
     if (same) { $(".view")?.classList.add("static"); window.scrollTo(0, y); }
     ui.lastView = v;
@@ -1152,6 +1164,7 @@
         break;
       }
       case "inbox-tab": ui.inboxTab = el.dataset.v; ui.whenFor = null; return render();
+      case "inbox-mode": s.settings.inboxMode = el.dataset.v; save(); return render();
       case "goto-ready": ui.inboxTab = "ready"; s.view = "inbox"; break;
       case "edit-title": ui.editing = id; ui.whenFor = null; return render();
       case "when": ui.whenFor = ui.whenFor === id ? null : id; return render();
@@ -1277,7 +1290,7 @@
       case "close": return closeModal();
       case "overlay": if (e.target === el) closeModal(); return;
       default:
-        for (const m of ["screen", "projects", "spirit", "news", "timelog", "sync", "calendar"]) if (window.LOS[m] && window.LOS[m].act(a, el)) return;
+        for (const m of ["screen", "projects", "spirit", "news", "timelog", "sync", "calendar", "areas", "board", "breaks"]) if (window.LOS[m] && window.LOS[m].act(a, el)) return;
         return;
     }
     save();
@@ -1340,7 +1353,7 @@
         return;
       }
       default:
-        for (const m of ["projects", "spirit", "timelog", "sync"]) if (window.LOS[m].submit(f, d)) return;
+        for (const m of ["projects", "spirit", "timelog", "sync", "areas", "board"]) if (window.LOS[m].submit(f, d)) return;
         return;
     }
     save();
@@ -1400,7 +1413,9 @@
   }
   if (location.hash === "#news") { S().view = "news"; history.replaceState(null, "", location.pathname + location.search); }
   window.LOS.icons = I;
-  window.LOS.app = { toast, render, save, reward, addTask, makeTop, startFocus, openModal, closeModal, renderModal, notify };
+  const openBoard = (groupBy) => { S().view = "inbox"; S().settings.inboxMode = "board"; if (groupBy) S().settings.boardGroup = groupBy; save(); window.scrollTo(0, 0); render(); };
+  window.LOS.app = { toast, render, save, reward, addTask, makeTop, startFocus, openModal, closeModal, renderModal, notify,
+    completeTask, uncomplete, later, setPlan, capture, openBoard, endFocusQuiet: () => endFocus({ silent: true }) };
   // offline + notifications (not available when opened as a file)
   if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
   render();

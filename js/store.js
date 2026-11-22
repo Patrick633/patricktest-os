@@ -65,14 +65,31 @@ window.LOS = window.LOS || {};
     return m ? `${h}h ${m}m` : `${h}h`;
   };
 
-  const AREAS = {
-    health: { name: "Health", color: "#ff5c8a", emoji: "🏃" },
-    mind: { name: "Mind", color: "#8b7cff", emoji: "🧘" },
-    work: { name: "Work", color: "#4dd8ff", emoji: "💼" },
-    money: { name: "Money", color: "#5cffb0", emoji: "💰" },
-    learning: { name: "Learning", color: "#ffd84d", emoji: "📚" },
-    people: { name: "People", color: "#ffa24d", emoji: "💬" },
+  const DEFAULT_AREAS = [
+    { id: "health", name: "Health", color: "#ff5c8a", emoji: "🏃" },
+    { id: "mind", name: "Mind", color: "#8b7cff", emoji: "🧘" },
+    { id: "work", name: "Work", color: "#4dd8ff", emoji: "💼" },
+    { id: "money", name: "Money", color: "#5cffb0", emoji: "💰" },
+    { id: "learning", name: "Learning", color: "#ffd84d", emoji: "📚" },
+    { id: "people", name: "People", color: "#ffa24d", emoji: "💬" },
+  ];
+  const AREA_COLORS = ["#ff5c8a", "#8b7cff", "#4dd8ff", "#5cffb0", "#ffd84d", "#ffa24d", "#ff7ad9", "#c8ff4d", "#9a9aae", "#4d9fff"];
+  /** Live map of life areas. The same object is updated in place, so every module always sees the current areas. */
+  const AREAS = {};
+  const applyAreas = (st) => {
+    Object.keys(AREAS).forEach((k) => delete AREAS[k]);
+    const list = st && Array.isArray(st.areaDefs) ? st.areaDefs : DEFAULT_AREAS;
+    list.forEach((a) => {
+      if (!a || !/^[\w-]{1,40}$/.test(String(a.id))) return;
+      AREAS[a.id] = {
+        name: String(a.name || "Area").slice(0, 30),
+        emoji: String(a.emoji || "").slice(0, 8),
+        color: /^#[0-9a-f]{6}$/i.test(String(a.color)) ? a.color : "#9a9aae",
+      };
+    });
+    return st;
   };
+  applyAreas(null);
 
   const HABIT_TEMPLATES = {
     health: [["💧", "Drink 2L of water", "One glass"], ["🏃", "Move for 30 min", "10-min walk"]],
@@ -202,7 +219,7 @@ window.LOS = window.LOS || {};
     /** write without marking as changed (used when applying data from the cloud) */
     write() { try { localStorage.setItem(KEY, JSON.stringify(this.state)); } catch { /* storage unavailable: keep in memory */ } },
     reset() { this.state = defaults(); this.save(); },
-    merge(o) { o = clean(o && typeof o === "object" ? o : {}); const d = defaults(); return repair({ ...d, ...o, settings: { ...d.settings, ...obj(o.settings) }, screen: { ...d.screen, ...obj(o.screen) }, spirit: { ...d.spirit, ...obj(o.spirit) }, news: { ...d.news, ...obj(o.news) }, timelog: { ...d.timelog, ...obj(o.timelog) } }); },
+    merge(o) { o = clean(o && typeof o === "object" ? o : {}); const d = defaults(); return applyAreas(repair({ ...d, ...o, settings: { ...d.settings, ...obj(o.settings) }, screen: { ...d.screen, ...obj(o.screen) }, spirit: { ...d.spirit, ...obj(o.spirit) }, news: { ...d.news, ...obj(o.news) }, timelog: { ...d.timelog, ...obj(o.timelog) } })); },
     replace(obj) { this.state = this.merge(obj); this.save(); },
   };
 
@@ -255,5 +272,5 @@ window.LOS = window.LOS || {};
     winsToday: () => sel.doneToday().length + store.state.habits.filter((h) => h.log[today()]).length,
   };
 
-  Object.assign(window.LOS, { clean, safeUrl, weekStart, monthKey, makePlan, planLabel, planArrived, pad, dkey, addDays, uid, esc, today, nowMin, toMin, fmtDur, AREAS, HABIT_TEMPLATES, MOODS, ENERGY, MAX_TOP, store, sel });
+  Object.assign(window.LOS, { applyAreas, DEFAULT_AREAS, AREA_COLORS, clean, safeUrl, weekStart, monthKey, makePlan, planLabel, planArrived, pad, dkey, addDays, uid, esc, today, nowMin, toMin, fmtDur, AREAS, HABIT_TEMPLATES, MOODS, ENERGY, MAX_TOP, store, sel });
 })();
