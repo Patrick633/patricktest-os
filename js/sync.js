@@ -96,7 +96,7 @@ window.LOS = window.LOS || {};
     t = t.replace(/&amp;/g, "&");
     const at = t.match(/access_token=([^&\s#"']+)/);
     if (at) return { hash: t.slice(t.indexOf("access_token=")) };
-    const tok = t.match(/[?&]token=([A-Za-z0-9_-]{8,})/);
+    const tok = t.match(/[?&]token=([A-Za-z0-9_-]{6,})/);
     if (!tok) return null;
     const type = (t.match(/[?&]type=(signup|magiclink|recovery|invite|email_change)/) || [])[1] || "magiclink";
     return { token: tok[1], type: type === "signup" ? "signup" : "magiclink" };
