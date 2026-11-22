@@ -50,7 +50,11 @@ O projeto `jgfrdrptqykiphszxnpd` já está pronto: tabela protegida (cada conta 
 
 > Dica: se o botão de Calendário não abrir pelo app da tela de início, faça esse passo uma vez pelo Safari.
 
-**Ainda por vir:** alertas de vulnerabilidades novas (CISA) e timers com o app totalmente fechado precisam de um pequeno servidor de push no Supabase. Depois que a sincronização estiver funcionando, é o próximo passo.
+**Alertas de vulnerabilidades (CISA):** um servidor no Supabase confere a lista da CISA a cada 2 horas e avisa no celular quando surge uma vulnerabilidade nova sendo explorada, **mesmo com o app fechado**.
+1. Abra o Life OS **pelo ícone** (iPhone com iOS 16.4+) e entre na sincronização.
+2. ⚙️ Settings → **☁️ Sync** → ligue **🛡️ Vulnerability alerts** → **Permitir**.
+3. Toque em **Send a test alert** para conferir.
+Faça isso em cada aparelho onde quiser receber.
 
 ## 5. No Mac depois disso
 

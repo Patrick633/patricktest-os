@@ -9,6 +9,7 @@ Life OS is a static web app. There is no Life OS server, and your data is never 
 | Everything you type in the app | Your browser's `localStorage` on each device | Only that browser |
 | Cloud sync (optional) | Your own Supabase project, table `lifeos_state` | Only your signed-in account (row-level security) |
 | Browser companion (sites, YouTube titles) | `chrome.storage.local` on your computer | Only the extension and the Life OS page |
+| Vulnerability alert devices | Your Supabase table `push_subscriptions` (one row per device that turned alerts on) | Only your account; the alert job (server) |
 | Backups | The file you export / `localStorage` (`lifeos.backups`) | You |
 
 The public repository only contains code. `sync-config.js` holds the Supabase URL and *anon* key, which are designed to be public; access is enforced by the policies in `supabase/schema.sql`.
@@ -23,6 +24,7 @@ The public repository only contains code. `sync-config.js` holds the Supabase UR
 - **No framing**: the app refuses to run inside another site's frame (clickjacking).
 - **Sync**: sign-in uses one-time email codes; tokens refresh automatically; a sync conflict never silently drops data (the other version becomes a restorable backup).
 - **Browser companion**: shares data only with `https://patrick633.github.io/patricktest-os/` and `http://localhost:8000`. It fetches only a fixed list of news feeds. Web pages cannot message it directly.
+- **Server functions** (`supabase/functions`): `news` only fetches a fixed list of feeds and allows calls from the Life OS addresses; `kev-alert` runs every 2 hours with a secret header, and sends test alerts only to the caller's own devices. The push private key and the job secret live only in Supabase secrets.
 - **Service worker**: caches only the app's own files and fonts, never API or sync responses.
 - **No third-party JavaScript libraries.**
 
@@ -30,7 +32,8 @@ The public repository only contains code. `sync-config.js` holds the Supabase UR
 
 1. After you create your account, turn off **Allow new users to sign up** (Authentication → Sign In / Providers).
 2. Keep the email OTP expiry short (Authentication → Emails, default 1 hour is fine).
-3. Never put the **service_role** key anywhere in this repository.
+3. Never put the **service_role** / secret key anywhere in this repository.
+4. Sign-ups are disabled for this project, so only the owner's email can sign in.
 
 ## Known limits
 

@@ -57,6 +57,8 @@ The Screen tab shows a 14-day chart (iPhone, Mac/browser, videos), an optional s
 - **Install on iPhone**: published with GitHub Pages, then Safari → Share → *Add to Home Screen*. Works offline (service worker).
 - **Cloud sync** (Supabase, free): sign in with a 6-digit email code on each device. Changes upload a few seconds after you stop editing; the app pulls on open, on focus and every minute. If two devices changed things, the newest wins and the other version is kept as a restorable backup.
 - **Notifications**: timer end, hyperfocus check and quiet time (iOS 16.4+, home-screen app).
+- **Vulnerability alerts**: a Supabase function checks CISA's Known Exploited Vulnerabilities every 2 hours and sends web push to devices that turned alerts on.
+- **News server**: a Supabase function serves the security RSS feeds and CISA list, so all sources work on iPhone.
 - **Reminders through Calendar**: daily/weekly reminders and time blocks export as `.ics`, so they ring even with the app closed.
 
 Step-by-step setup (Portuguese): [`docs/SETUP-IPHONE.md`](docs/SETUP-IPHONE.md). Database script: [`supabase/schema.sql`](supabase/schema.sql).

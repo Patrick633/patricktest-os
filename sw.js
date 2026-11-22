@@ -1,5 +1,5 @@
 /* Life OS service worker: works offline, shows notifications, and is ready for push. */
-const CACHE = "lifeos-v17";
+const CACHE = "lifeos-v18";
 const SHELL = [
   "./", "index.html", "manifest.webmanifest", "sync-config.js",
   "css/style.css", "js/store.js", "js/fx.js", "js/screen.js", "js/projects.js", "js/spirit.js",
@@ -38,9 +38,12 @@ self.addEventListener("fetch", (e) => {
 // tap on a notification → open / focus Life OS
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || "./", self.registration.scope).href;
   e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
-    for (const c of list) if ("focus" in c) return c.focus();
-    return self.clients.openWindow("./");
+    for (const c of list) {
+      if ("focus" in c) { if ("navigate" in c && url !== c.url) c.navigate(url).catch(() => {}); return c.focus(); }
+    }
+    return self.clients.openWindow(url);
   }));
 });
 

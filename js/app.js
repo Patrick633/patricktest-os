@@ -1398,6 +1398,7 @@
     document.body.innerHTML = '<p style="padding:24px;font-family:system-ui;color:#fff;background:#0a0a0d">Open Life OS directly: <a style="color:#c8ff4d" target="_top" href="' + location.href.replace(/"/g, "") + '">' + location.host + "</a></p>";
     return;
   }
+  if (location.hash === "#news") { S().view = "news"; history.replaceState(null, "", location.pathname + location.search); }
   window.LOS.icons = I;
   window.LOS.app = { toast, render, save, reward, addTask, makeTop, startFocus, openModal, closeModal, renderModal, notify };
   // offline + notifications (not available when opened as a file)

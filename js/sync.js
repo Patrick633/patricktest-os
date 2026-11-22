@@ -221,6 +221,46 @@ window.LOS = window.LOS || {};
   setInterval(() => { if (!document.hidden) syncNow(); }, 60 * 1000);
   consumeHash().finally(() => setTimeout(() => syncNow(), 800));
 
+  // ---------------------------------------------------------------- vulnerability alerts (web push)
+  const pushSupported = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window && window.isSecureContext;
+  const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
+  const standalone = () => window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const vapid = () => (window.LOS_SYNC_CONFIG || {}).vapidPublicKey;
+  const b64ToU8 = (s) => { const b = atob((s + "=".repeat((4 - (s.length % 4)) % 4)).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(b, (c) => c.charCodeAt(0)); };
+  const alertsOn = () => !!readCfg().pushEndpoint;
+  const enableAlerts = async () => {
+    if (Notification.permission !== "granted" && (await Notification.requestPermission()) !== "granted") throw new Error("Notifications are blocked for Life OS. Allow them in your device settings.");
+    await ensureToken();
+    const reg = await navigator.serviceWorker.ready;
+    const sub = (await reg.pushManager.getSubscription()) || (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(vapid()) }));
+    const j = sub.toJSON();
+    await api("/rest/v1/push_subscriptions?on_conflict=endpoint", {
+      method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: { endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, kev: true, device: deviceName(), user_id: session().user_id },
+    });
+    setCfg({ pushEndpoint: j.endpoint });
+  };
+  const disableAlerts = async () => {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    const ep = readCfg().pushEndpoint || (sub && sub.endpoint);
+    if (ep) { await ensureToken(); await api(`/rest/v1/push_subscriptions?endpoint=eq.${encodeURIComponent(ep)}`, { method: "DELETE" }); }
+    if (sub) await sub.unsubscribe();
+    setCfg({ pushEndpoint: null });
+  };
+  const alertsHTML = () => {
+    const help = !pushSupported()
+      ? (isIOS() && !standalone() ? "On iPhone, open Life OS from its Home Screen icon to turn this on (needs iOS 16.4+)." : "This browser can't receive push notifications.")
+      : "";
+    return `
+      <div class="row" style="justify-content:space-between;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid var(--line)">
+        <div><b style="font-weight:500">🛡️ Vulnerability alerts</b><br><small class="mut">A notification on this device when CISA adds newly exploited vulnerabilities. Checked every 2 hours, even with the app closed.</small></div>
+        ${pushSupported() && vapid() ? `<button class="switch ${alertsOn() ? "on" : ""}" data-action="sync-alerts" role="switch" aria-checked="${alertsOn()}" aria-label="Vulnerability alerts" ${status.busy ? "disabled" : ""}></button>` : ""}
+      </div>
+      ${help ? `<p class="mut" style="font-size:12px;margin-top:6px">${help}</p>` : ""}
+      ${alertsOn() ? `<button class="tagbtn" style="margin-top:8px" data-action="sync-alert-test">Send a test alert</button>` : ""}`;
+  };
+
   // ---------------------------------------------------------------- UI (Settings section + modals)
   const ago = (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : `${Math.round(m / 60)}h ago`; };
 
@@ -261,7 +301,8 @@ window.LOS = window.LOS || {};
           <div><b style="font-weight:500">${esc(s.email || "Signed in")}</b><br><small class="mut">${label}${c.lastSync ? ` · ${ago(c.lastSync)}` : ""} · this device: ${esc(deviceName())}</small></div>
           <div class="row" style="gap:6px"><button class="btn sm ghost" data-action="sync-now">↻ Sync now</button><button class="btn sm quiet" data-action="sync-signout">Sign out</button></div>
         </div>
-        ${status.state === "error" ? `<p style="color:var(--pink);font-size:12px;margin-top:8px">${esc(status.error)}</p>` : ""}`;
+        ${status.state === "error" ? `<p style="color:var(--pink);font-size:12px;margin-top:8px">${esc(status.error)}</p>` : ""}
+        ${alertsHTML()}`;
     }
     const bks = backups();
     return `
@@ -294,6 +335,21 @@ window.LOS = window.LOS || {};
       case "sync-now": syncNow({ quiet: false }); return true;
       case "sync-signout": signOut(); A.toast("Signed out. Data stays on this device."); refreshUI(); return true;
       case "sync-restart": status.codeSentTo = null; refreshUI(); return true;
+      case "sync-alerts": {
+        const turnOn = !alertsOn();
+        status.busy = true; refreshUI();
+        (turnOn ? enableAlerts() : disableAlerts())
+          .then(() => A.toast(turnOn ? "🛡️ Alerts on for this device" : "Alerts off for this device"))
+          .catch((e) => A.toast(`Couldn't change alerts: ${esc(e.message || String(e))}`, { ms: 5000 }))
+          .finally(() => { status.busy = false; refreshUI(); });
+        return true;
+      }
+      case "sync-alert-test":
+        ensureToken()
+          .then(() => api("/functions/v1/kev-alert", { method: "POST", body: { test: true } }))
+          .then((r) => A.toast(r && r.sent ? "Test sent. It should arrive in a few seconds 🛡️" : "No devices subscribed yet."))
+          .catch((e) => A.toast(`Test failed: ${esc(e.message)}`));
+        return true;
       case "sync-use-cloud":
         backup(strip(store.state), "this device, before using the cloud version");
         applyRemote(pending); pending = null; status.state = "ok";
