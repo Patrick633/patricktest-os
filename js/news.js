@@ -12,14 +12,15 @@ window.LOS = window.LOS || {};
   const app = () => window.LOS.app;
 
   const SOURCES = {
-    thn: { name: "The Hacker News", color: "#ff5c8a", via: "ext" },
-    bleeping: { name: "BleepingComputer", color: "#4dd8ff", via: "ext" },
-    krebs: { name: "Krebs on Security", color: "#ffd84d", via: "ext" },
-    securityweek: { name: "SecurityWeek", color: "#8b7cff", via: "ext" },
-    darkreading: { name: "Dark Reading", color: "#ffa24d", via: "ext" },
-    hn: { name: "Hacker News", color: "#ff8a3d", via: "direct" },
-    dev: { name: "DEV", color: "#5cffb0", via: "direct" },
+    thn: { name: "The Hacker News", color: "#ff5c8a", via: "ext", site: "https://thehackernews.com/" },
+    bleeping: { name: "BleepingComputer", color: "#4dd8ff", via: "ext", site: "https://www.bleepingcomputer.com/" },
+    krebs: { name: "Krebs on Security", color: "#ffd84d", via: "ext", site: "https://krebsonsecurity.com/" },
+    securityweek: { name: "SecurityWeek", color: "#8b7cff", via: "ext", site: "https://www.securityweek.com/" },
+    darkreading: { name: "Dark Reading", color: "#ffa24d", via: "ext", site: "https://www.darkreading.com/" },
+    hn: { name: "Hacker News", color: "#ff8a3d", via: "direct", site: "https://news.ycombinator.com/" },
+    dev: { name: "DEV", color: "#5cffb0", via: "direct", site: "https://dev.to/t/cybersecurity" },
   };
+  const isPhone = () => /iPhone|iPad|Android/.test(navigator.userAgent);
   const HN_TERMS = ["security", "vulnerability", "ransomware", "breach", "malware", "exploit", "CVE", "zero-day"];
   const ui = { loading: false, more: false, timerWarned: false };
 
@@ -115,6 +116,10 @@ window.LOS = window.LOS || {};
     app().render();
   };
 
+  // keep it fresh while you're on the News tab
+  setInterval(() => { if (!document.hidden && S().view === "news" && Date.now() - (NW().fetchedAt || 0) > 15 * 60e3) refresh(); }, 60e3);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && S().view === "news" && Date.now() - (NW().fetchedAt || 0) > 15 * 60e3) refresh(); });
+
   // ---------------------------------------------------------------- 5-minute timer
   setInterval(() => {
     const end = NW().timerEnd;
@@ -136,7 +141,7 @@ window.LOS = window.LOS || {};
   // ---------------------------------------------------------------- view
   const view = () => {
     const n = NW();
-    if (!ui.loading && Date.now() - (n.fetchedAt || 0) > 2 * 3600e3) setTimeout(refresh, 50); // auto refresh every 2h
+    if (!ui.loading && Date.now() - (n.fetchedAt || 0) > 15 * 60e3) setTimeout(refresh, 50); // fresh every 15 min
     const fresh = n.items.filter((i) => Date.now() - i.at < 4 * 86400e3);
     const list = n.filter === "all" ? fresh : fresh.filter((i) => i.src === n.filter);
     const shown = list.slice(0, ui.more ? 40 : 10);
@@ -188,9 +193,11 @@ window.LOS = window.LOS || {};
               <h3>Sources</h3>
               <div class="srcs">${Object.entries(SOURCES).map(([k, s]) => {
                 const v = s.via === "ext" && !extOk ? "needs extension" : st[k] === "ok" ? "✓" : st[k] === "error" ? "unavailable" : "–";
-                return `<div class="src-row"><span class="dot" style="background:${s.color}"></span><span class="t">${s.name}</span><span class="mut mono" style="font-size:11px">${v}</span></div>`;
+                return `<div class="src-row"><span class="dot" style="background:${s.color}"></span><a class="t" href="${s.site}" target="_blank" rel="noopener">${s.name} ↗</a><span class="mut mono" style="font-size:11px">${v}</span></div>`;
               }).join("")}</div>
-              ${extOk ? "" : `<details class="how"><summary>Get all sources with the browser companion</summary>
+              ${!extOk && isPhone() ? `<p class="mut" style="font-size:12px;line-height:1.5;margin-top:10px">On iPhone, browser extensions can't run, so only Hacker News and DEV load here. Tap a source above to open its site.</p>` : ""}
+              ${st.hn === "error" && st.dev === "error" ? `<p style="font-size:12px;line-height:1.5;margin-top:10px;color:var(--pink)">Couldn't reach Hacker News or DEV right now (offline, or blocked by a content blocker/VPN). Try Refresh.</p>` : ""}
+              ${extOk || isPhone() ? "" : `<details class="how"><summary>Get all sources with the browser companion</summary>
                 <p>Security news sites only publish RSS feeds, which web pages can't read directly. The Life OS Companion extension reads them for you.</p>
                 <ol><li>Install it from the <span class="mono">extension</span> folder (see the Screen tab).</li>
                 <li>Already installed? Open <span class="mono">chrome://extensions</span> and click <b>↻ reload</b> on Life OS Companion to grant the news permissions.</li>

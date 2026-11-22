@@ -785,3 +785,5 @@ a.btn { text-decoration: none; }
     .tabs { bottom: calc(12px + env(safe-area-inset-bottom)); }
   }
 }
+.src-row a.t { color: var(--ink); text-decoration: none; }
+.src-row a.t:hover { color: var(--accent-ink); }

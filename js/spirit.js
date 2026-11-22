@@ -74,6 +74,14 @@ window.LOS = window.LOS || {};
   // Bible books: [English, Portuguese, chapters]
   const BOOKS = [["Genesis","Gênesis",50],["Exodus","Êxodo",40],["Leviticus","Levítico",27],["Numbers","Números",36],["Deuteronomy","Deuteronômio",34],["Joshua","Josué",24],["Judges","Juízes",21],["Ruth","Rute",4],["1 Samuel","1 Samuel",31],["2 Samuel","2 Samuel",24],["1 Kings","1 Reis",22],["2 Kings","2 Reis",25],["1 Chronicles","1 Crônicas",29],["2 Chronicles","2 Crônicas",36],["Ezra","Esdras",10],["Nehemiah","Neemias",13],["Esther","Ester",10],["Job","Jó",42],["Psalms","Salmos",150],["Proverbs","Provérbios",31],["Ecclesiastes","Eclesiastes",12],["Song of Solomon","Cânticos",8],["Isaiah","Isaías",66],["Jeremiah","Jeremias",52],["Lamentations","Lamentações",5],["Ezekiel","Ezequiel",48],["Daniel","Daniel",12],["Hosea","Oseias",14],["Joel","Joel",3],["Amos","Amós",9],["Obadiah","Obadias",1],["Jonah","Jonas",4],["Micah","Miqueias",7],["Nahum","Naum",3],["Habakkuk","Habacuque",3],["Zephaniah","Sofonias",3],["Haggai","Ageu",2],["Zechariah","Zacarias",14],["Malachi","Malaquias",4],
     ["Matthew","Mateus",28],["Mark","Marcos",16],["Luke","Lucas",24],["John","João",21],["Acts","Atos",28],["Romans","Romanos",16],["1 Corinthians","1 Coríntios",16],["2 Corinthians","2 Coríntios",13],["Galatians","Gálatas",6],["Ephesians","Efésios",6],["Philippians","Filipenses",4],["Colossians","Colossenses",4],["1 Thessalonians","1 Tessalonicenses",5],["2 Thessalonians","2 Tessalonicenses",3],["1 Timothy","1 Timóteo",6],["2 Timothy","2 Timóteo",4],["Titus","Tito",3],["Philemon","Filemom",1],["Hebrews","Hebreus",13],["James","Tiago",5],["1 Peter","1 Pedro",5],["2 Peter","2 Pedro",3],["1 John","1 João",5],["2 John","2 João",1],["3 John","3 João",1],["Jude","Judas",1],["Revelation","Apocalipse",22]];
+  // USFM book codes used by Bible.com / YouVersion links (same order as BOOKS)
+  const USFM = "GEN EXO LEV NUM DEU JOS JDG RUT 1SA 2SA 1KI 2KI 1CH 2CH EZR NEH EST JOB PSA PRO ECC SNG ISA JER LAM EZK DAN HOS JOL AMO OBA JON MIC NAM HAB ZEP HAG ZEC MAL MAT MRK LUK JHN ACT ROM 1CO 2CO GAL EPH PHP COL 1TH 2TH 1TI 2TI TIT PHM HEB JAS 1PE 2PE 1JN 2JN 3JN JUD REV".split(" ");
+  // Bible.com version ids
+  const VERSIONS = [
+    ["KJV", 1, "King James (EN)"], ["NIV", 111, "NIV (EN)"], ["ESV", 59, "ESV (EN)"], ["NLT", 116, "NLT (EN)"],
+    ["ARC", 212, "Almeida Revista e Corrigida (PT)"], ["NVI", 129, "Nova Versão Internacional (PT)"], ["ARA", 1608, "Almeida Revista e Atualizada (PT)"],
+    ["NVT", 1930, "Nova Versão Transformadora (PT)"], ["NAA", 1840, "Nova Almeida Atualizada (PT)"],
+  ];
   const byName = (n) => BOOKS.findIndex((b) => b[0] === n);
   const range = (a, b) => BOOKS.slice(byName(a), byName(b) + 1);
   const PLANS = {
@@ -99,7 +107,27 @@ window.LOS = window.LOS || {};
       query: groups.map((g) => `${g.en} ${g.from}${g.to > g.from ? `-${g.to}` : ""}`).join("; "),
     };
   };
-  const gateway = (q) => `https://www.biblegateway.com/passage/?search=${encodeURIComponent(q)}&version=${pt() ? "ARC" : "KJV"}`;
+  const version = () => {
+    const want = SP().bibleVersion || (pt() ? "ARC" : "KJV");
+    return VERSIONS.find((v) => v[0] === want) || VERSIONS[0];
+  };
+  /** "John 3" / "Proverbs 3:5-6" / "John 21; Acts 1-2" → first passage as [bookIndex, chapter, verse] */
+  const parseRef = (q) => {
+    const first = String(q).split(";")[0].trim().replace(/^Psalm\b/, "Psalms");
+    const m = first.match(/^(.+?)\s+(\d+)(?::(\d+))?/);
+    if (!m) return null;
+    const i = byName(m[1]);
+    return i < 0 ? null : [i, Number(m[2]), m[3] ? Number(m[3]) : null];
+  };
+  /** opens in the YouVersion (Bible.com) app on iPhone when it's installed */
+  const bibleLink = (q) => {
+    if (SP().bibleSite === "gateway") return `https://www.biblegateway.com/passage/?search=${encodeURIComponent(q)}&version=${version()[0] === "NVI" ? "NVI-PT" : version()[0]}`;
+    const r = parseRef(q);
+    const [abbr, id] = version();
+    if (!r) return `https://www.bible.com/search/bible?q=${encodeURIComponent(q)}`;
+    return `https://www.bible.com/bible/${id}/${USFM[r[0]]}.${r[1]}${r[2] ? "." + r[2] : ""}.${abbr}`;
+  };
+  const gateway = bibleLink;
 
   const dayOfYear = () => { const n = new Date(); return Math.floor((n - new Date(n.getFullYear(), 0, 0)) / 864e5); };
   const daily = () => {
@@ -176,7 +204,7 @@ window.LOS = window.LOS || {};
           ${finished ? `<div class="wins"><b>🎉</b><span>Plan complete! Pick another?</span></div><button class="btn ghost sm" data-action="sp-plan" data-v="">Choose a new plan</button>`
           : `<div class="read-today">${readToday ? "✓ Read today. Next up:" : "Today's reading:"}<b>${esc(ch.label)}</b></div>
             <div class="row" style="gap:8px;flex-wrap:wrap;margin-top:12px">
-              <a class="btn ghost" href="${gateway(ch.query)}" target="_blank" rel="noopener">📖 Open reading</a>
+              <a class="btn ghost" href="${gateway(ch.query)}" target="_blank" rel="noopener">📖 Open in ${SP().bibleSite === "gateway" ? "Bible Gateway" : "Bible app"}</a>
               <button class="btn primary" data-action="sp-read">✓ I read it</button>
             </div>
             <div class="bar-soft"><i style="width:${(plan.day / P.days) * 100}%;background:var(--vio)"></i></div>
@@ -234,6 +262,12 @@ window.LOS = window.LOS || {};
             <div class="c">
               <h3>Settings</h3>
               <div class="seg" style="flex-wrap:wrap">${[["christian-en", "Christian · EN"], ["christian-pt", "Christian · PT"], ["reflect", "Reflection"]].map(([v, l]) => `<button class="${SP().tradition === v ? "on" : ""}" data-action="sp-trad" data-v="${v}">${l}</button>`).join("")}</div>
+              ${christian ? `
+              <div class="set-row" style="display:block"><div style="margin-bottom:8px"><b>Bible app & version</b><small>Links open Bible.com, which opens the YouVersion app on iPhone if you have it. Your plans and highlights in YouVersion stay there.</small></div>
+                <div class="row" style="gap:8px;flex-wrap:wrap">
+                  <div class="seg"><button class="${SP().bibleSite !== "gateway" ? "on" : ""}" data-action="sp-site" data-v="youversion">Bible.com / YouVersion</button><button class="${SP().bibleSite === "gateway" ? "on" : ""}" data-action="sp-site" data-v="gateway">Bible Gateway</button></div>
+                  <select class="field" style="width:auto" data-sp-version>${VERSIONS.map(([a, , n]) => `<option value="${a}" ${version()[0] === a ? "selected" : ""}>${n}</option>`).join("")}</select>
+                </div></div>` : ""}
               <div class="set-row" style="border:0;padding-bottom:0"><div><b>Show on Now screen</b><small>${christian ? "Verse" : "Reflection"} of the day in the side column</small></div>
                 <button class="switch ${SP().showOnNow ? "on" : ""}" data-action="sp-show" role="switch" aria-checked="${!!SP().showOnNow}" aria-label="Show on Now"></button></div>
             </div>
@@ -292,6 +326,7 @@ window.LOS = window.LOS || {};
       }
       case "sp-del": SP().prayers = SP().prayers.filter((x) => x.id !== el.dataset.id); break;
       case "sp-show": SP().showOnNow = !SP().showOnNow; break;
+      case "sp-site": SP().bibleSite = el.dataset.v; break;
       default: return false;
     }
     A.save(); A.render();
@@ -323,5 +358,13 @@ window.LOS = window.LOS || {};
     }
   };
 
-  window.LOS.spirit = { view, act, submit, nowCard, _planDay: planDay, _fmt: fmtChapters };
+  // version picker
+  document.addEventListener("change", (e) => {
+    if (!e.target.hasAttribute || !e.target.hasAttribute("data-sp-version")) return;
+    SP().bibleVersion = e.target.value;
+    app().save(); app().render();
+    app().toast(`📖 ${esc(version()[2])}`);
+  });
+
+  window.LOS.spirit = { view, act, submit, nowCard, _link: bibleLink, _planDay: planDay, _fmt: fmtChapters };
 })();
