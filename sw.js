@@ -1,5 +1,5 @@
 /* Life OS service worker: works offline, shows notifications, and is ready for push. */
-const CACHE = "lifeos-v18";
+const CACHE = "lifeos-v19";
 const SHELL = [
   "./", "index.html", "manifest.webmanifest", "sync-config.js",
   "css/style.css", "js/store.js", "js/fx.js", "js/screen.js", "js/projects.js", "js/spirit.js",

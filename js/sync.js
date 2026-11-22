@@ -88,20 +88,30 @@ window.LOS = window.LOS || {};
     finishSignIn({ access_token: h.get("access_token"), refresh_token: h.get("refresh_token"), expires_in: Number(h.get("expires_in")) || 3600, user });
     return true;
   };
-  /** accepts a 6–8 digit code, the link from the email, or the page address after tapping the link */
+  /** Finds the sign-in token in whatever was pasted: the plain link, a Gmail/Outlook-wrapped link
+      (google.com/url?q=…), text around it, or the app address after tapping the link. */
+  const parsePasted = (input) => {
+    let t = String(input || "").trim();
+    for (let i = 0; i < 4; i++) { try { const d = decodeURIComponent(t); if (d === t) break; t = d; } catch { break; } }
+    t = t.replace(/&amp;/g, "&");
+    const at = t.match(/access_token=([^&\s#"']+)/);
+    if (at) return { hash: t.slice(t.indexOf("access_token=")) };
+    const tok = t.match(/[?&]token=([A-Za-z0-9_-]{8,})/);
+    if (!tok) return null;
+    const type = (t.match(/[?&]type=(signup|magiclink|recovery|invite|email_change)/) || [])[1] || "magiclink";
+    return { token: tok[1], type: type === "signup" ? "signup" : "magiclink" };
+  };
+  /** accepts a 6–8 digit code, the link from the email (even wrapped by Gmail), or the page address after tapping it */
   const verifyCode = async (email, input) => {
     const v = String(input || "").trim();
     if (/^\d{6,10}$/.test(v)) {
       finishSignIn(await api("/auth/v1/verify", { method: "POST", body: { type: "email", email, token: v }, auth: false }));
       return;
     }
-    let url;
-    try { url = new URL(v); } catch { throw new Error("Paste the whole link from the email (it starts with https://)."); }
-    if (url.hash.includes("access_token")) { await sessionFromHash(url.hash); return; }
-    const token = url.searchParams.get("token");
-    if (!token) throw new Error("That link doesn't look like the sign-in link from the email.");
-    const type = url.searchParams.get("type") === "signup" ? "signup" : "magiclink";
-    finishSignIn(await api("/auth/v1/verify", { method: "POST", body: { type, token_hash: token }, auth: false }));
+    const p = parsePasted(v);
+    if (!p) throw new Error("Couldn't find the sign-in link in what you pasted. In Gmail: press and hold “Sign in” → Copy link, then paste here.");
+    if (p.hash) { await sessionFromHash(p.hash); return; }
+    finishSignIn(await api("/auth/v1/verify", { method: "POST", body: { type: p.type, token_hash: p.token }, auth: false }));
   };
   // arriving from the email link on this device: sign in automatically
   const consumeHash = async () => {
@@ -405,5 +415,5 @@ window.LOS = window.LOS || {};
   /** small dot by the logo: lime = synced, pink = problem */
   const dotClass = () => (!signedIn() ? "" : status.state === "error" ? "sync-err" : status.state === "syncing" ? "sync-busy" : "sync-ok");
 
-  window.LOS.sync = { settingsHTML, chooseHTML, act, submit, syncNow, dotClass, signedIn, _status: status };
+  window.LOS.sync = { _parsePasted: parsePasted, settingsHTML, chooseHTML, act, submit, syncNow, dotClass, signedIn, _status: status };
 })();
