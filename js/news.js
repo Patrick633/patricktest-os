@@ -57,6 +57,20 @@ window.LOS = window.LOS || {};
     return out;
   };
 
+  /** Life OS news server (Supabase Edge Function): fetches the RSS feeds + CISA list for us */
+  const viaServer = async () => {
+    const g = window.LOS_SYNC_CONFIG || {};
+    if (!g.url || !g.anonKey) return null;
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 20000);
+    try {
+      const r = await fetch(`${g.url.replace(/\/+$/, "")}/functions/v1/news`, { headers: { apikey: g.anonKey, Authorization: `Bearer ${g.anonKey}` }, signal: ctl.signal });
+      if (!r.ok) return null;
+      const d = await r.json();
+      return d && d.feeds ? d : null;
+    } catch { return null; } finally { clearTimeout(t); }
+  };
+
   /** ask the browser extension (it can read RSS feeds a web page can't) */
   const viaExtension = () => new Promise((resolve) => {
     let done = false;
@@ -91,7 +105,10 @@ window.LOS = window.LOS || {};
     ui.loading = true;
     app().render();
     const status = {};
-    const [hn, dev, ext] = await Promise.all([fetchHN().catch(() => null), fetchDEV().catch(() => null), viaExtension()]);
+    // security feeds: the Life OS news server first (works everywhere, incl. iPhone), the browser extension as backup
+    const [hn, dev, srv] = await Promise.all([fetchHN().catch(() => null), fetchDEV().catch(() => null), viaServer()]);
+    const ext = srv || (await viaExtension());
+    status.via = srv ? "server" : ext ? "extension" : null;
     status.hn = hn ? "ok" : "error";
     status.dev = dev ? "ok" : "error";
     let items = [...(hn || []), ...(dev || [])];
@@ -187,17 +204,17 @@ window.LOS = window.LOS || {};
                   <span class="t">${esc(v.vendor)} ${esc(v.product)}<small>${esc(v.name)}</small></span>
                   <span class="kev-meta mono">${esc(v.added)}${v.ransomware ? `<i class="pill" style="background:rgba(255,92,138,.15);color:var(--pink)">ransomware</i>` : ""}</span>
                 </a>`).join("")}</div>`
-              : `<p class="mut" style="font-size:13px;line-height:1.6">Vulnerabilities attackers are exploiting right now (from CISA). ${extOk ? "Nothing loaded yet." : "Needs the Life OS Companion extension."}</p>`}
+              : `<p class="mut" style="font-size:13px;line-height:1.6">Vulnerabilities attackers are exploiting right now (from CISA). ${extOk ? "Nothing loaded yet." : "Loading from the Life OS news server…"}</p>`}
             </div>
             <div class="c">
               <h3>Sources</h3>
               <div class="srcs">${Object.entries(SOURCES).map(([k, s]) => {
-                const v = s.via === "ext" && !extOk ? "needs extension" : st[k] === "ok" ? "✓" : st[k] === "error" ? "unavailable" : "–";
+                const v = s.via === "ext" && !extOk ? "not reachable" : st[k] === "ok" ? "✓" : st[k] === "error" ? "unavailable" : "–";
                 return `<div class="src-row"><span class="dot" style="background:${s.color}"></span><a class="t" href="${s.site}" target="_blank" rel="noopener">${s.name} ↗</a><span class="mut mono" style="font-size:11px">${v}</span></div>`;
               }).join("")}</div>
-              ${!extOk && isPhone() ? `<p class="mut" style="font-size:12px;line-height:1.5;margin-top:10px">On iPhone, browser extensions can't run, so only Hacker News and DEV load here. Tap a source above to open its site.</p>` : ""}
+              ${extOk ? `<p class="mut" style="font-size:12px;margin-top:10px">Security feeds via ${st.via === "extension" ? "the browser companion" : "the Life OS news server"} · refreshed every 15 min</p>` : `<p class="mut" style="font-size:12px;line-height:1.5;margin-top:10px">The security feeds couldn't load right now. Tap a source above to open its site, or try Refresh.</p>`}
               ${st.hn === "error" && st.dev === "error" ? `<p style="font-size:12px;line-height:1.5;margin-top:10px;color:var(--pink)">Couldn't reach Hacker News or DEV right now (offline, or blocked by a content blocker/VPN). Try Refresh.</p>` : ""}
-              ${extOk || isPhone() ? "" : `<details class="how"><summary>Get all sources with the browser companion</summary>
+              ${extOk || isPhone() || (window.LOS_SYNC_CONFIG || {}).url ? "" : `<details class="how"><summary>Get all sources with the browser companion</summary>
                 <p>Security news sites only publish RSS feeds, which web pages can't read directly. The Life OS Companion extension reads them for you.</p>
                 <ol><li>Install it from the <span class="mono">extension</span> folder (see the Screen tab).</li>
                 <li>Already installed? Open <span class="mono">chrome://extensions</span> and click <b>↻ reload</b> on Life OS Companion to grant the news permissions.</li>

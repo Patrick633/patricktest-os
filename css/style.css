@@ -787,3 +787,9 @@ a.btn { text-decoration: none; }
 }
 .src-row a.t { color: var(--ink); text-decoration: none; }
 .src-row a.t:hover { color: var(--accent-ink); }
+/* news on phones: source on its own line, title gets the full width */
+@media (max-width: 860px) {
+  .nrow { display: grid; grid-template-columns: 1fr auto auto; gap: 6px 8px; align-items: start; }
+  .nrow .nsrc { grid-column: 1 / -1; justify-self: start; max-width: none; margin: 0; }
+  .nrow .t a { font-size: 15px; }
+}
