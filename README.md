@@ -52,6 +52,15 @@ The Screen tab shows a 14-day chart (iPhone, Mac/browser, videos), an optional s
 2. Click **Load unpacked** and select the `extension` folder.
 3. Open Life OS at `http://localhost:8000` (see below). If you open `index.html` directly, enable **Allow access to file URLs** in the extension's details.
 
+## iPhone, sync and notifications
+
+- **Install on iPhone**: published with GitHub Pages, then Safari → Share → *Add to Home Screen*. Works offline (service worker).
+- **Cloud sync** (Supabase, free): sign in with a 6-digit email code on each device. Changes upload a few seconds after you stop editing; the app pulls on open, on focus and every minute. If two devices changed things, the newest wins and the other version is kept as a restorable backup.
+- **Notifications**: timer end, hyperfocus check and quiet time (iOS 16.4+, home-screen app).
+- **Reminders through Calendar**: daily/weekly reminders and time blocks export as `.ics`, so they ring even with the app closed.
+
+Step-by-step setup (Portuguese): [`docs/SETUP-IPHONE.md`](docs/SETUP-IPHONE.md). Database script: [`supabase/schema.sql`](supabase/schema.sql).
+
 ## Run
 
 Open `index.html` in a browser, or serve the folder:
@@ -74,7 +83,11 @@ js/projects.js    projects: phases, timeline, steps, study hours
 js/spirit.js      verse/reflection, reading plans, gratitude, prayer, quiet time
 js/news.js        cybersecurity news brief and CISA KEV
 js/screen.js      screen time: log, Takeout/Netflix import, extension bridge, insights
+js/sync.js        cloud sync (Supabase REST, email-code login, backups)
+js/calendar.js    .ics reminders and time blocks for the phone's Calendar
 js/app.js         views, focus mode, modals, events
+sw.js             service worker: offline, notifications, push
+sync-config.js    Supabase URL + anon key (public by design)
 extension/        Life OS Companion browser extension (Manifest V3)
 concepts/         earlier visual explorations (A bento, B dark, C editorial)
 ```

@@ -127,6 +127,7 @@ window.LOS = window.LOS || {};
       NW().timerEnd = null;
       app().save();
       if (S().settings.sound) window.LOS.fx.bell();
+      app().notify("⏱ 5 minutes of news", "Back to one thing?");
       app().toast("⏱ 5 minutes of news. Back to one thing?", { action: { label: "Go to Now", fn: () => { S().view = "now"; app().save(); app().render(); } }, ms: 7000 });
       app().render();
     }

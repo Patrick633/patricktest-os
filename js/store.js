@@ -133,9 +133,17 @@ window.LOS = window.LOS || {};
 
   const store = {
     state: load(),
-    save() { try { localStorage.setItem(KEY, JSON.stringify(this.state)); } catch { /* storage unavailable: keep in memory */ } },
+    /** save + mark as changed (cloud sync pushes it) */
+    save() {
+      this.state._updatedAt = Date.now();
+      this.write();
+      if (typeof window.LOS.onSave === "function") window.LOS.onSave();
+    },
+    /** write without marking as changed (used when applying data from the cloud) */
+    write() { try { localStorage.setItem(KEY, JSON.stringify(this.state)); } catch { /* storage unavailable: keep in memory */ } },
     reset() { this.state = defaults(); this.save(); },
-    replace(obj) { const d = defaults(); this.state = { ...d, ...obj, settings: { ...d.settings, ...(obj.settings || {}) }, screen: { ...d.screen, ...(obj.screen || {}) }, spirit: { ...d.spirit, ...(obj.spirit || {}) }, news: { ...d.news, ...(obj.news || {}) }, timelog: { ...d.timelog, ...(obj.timelog || {}) } }; this.save(); },
+    merge(obj) { const d = defaults(); return { ...d, ...obj, settings: { ...d.settings, ...(obj.settings || {}) }, screen: { ...d.screen, ...(obj.screen || {}) }, spirit: { ...d.spirit, ...(obj.spirit || {}) }, news: { ...d.news, ...(obj.news || {}) }, timelog: { ...d.timelog, ...(obj.timelog || {}) } }; },
+    replace(obj) { this.state = this.merge(obj); this.save(); },
   };
 
   // ---------- Derived selectors ----------

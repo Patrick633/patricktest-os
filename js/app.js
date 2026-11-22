@@ -74,9 +74,15 @@
     setTimeout(() => el.remove(), action ? ms + 2000 : ms);
   };
 
-  const notify = (title, body) => {
+  /** system notification (via the service worker, so it also works on iPhone home-screen apps).
+      Only when the app isn't on screen, unless force (test button). */
+  const notify = (title, body, force = false) => {
     try {
-      if (S().settings.alerts && "Notification" in window && Notification.permission === "granted" && document.hidden) new Notification(title, { body });
+      if (!("Notification" in window) || Notification.permission !== "granted") return;
+      if (!force && (!S().settings.alerts || !document.hidden)) return;
+      const opts = { body, icon: "icons/icon-192.png", badge: "icons/icon-192.png", tag: "lifeos-" + title };
+      if (navigator.serviceWorker && navigator.serviceWorker.controller) navigator.serviceWorker.ready.then((r) => r.showNotification(title, opts));
+      else new Notification(title, opts);
     } catch { /* ignore */ }
   };
 
@@ -313,7 +319,8 @@
         <span class="count">01 / 04</span>
         <h1>Hey. This is your <span>Life OS.</span></h1>
         <p class="lead">Built for brains that juggle a lot. One thing at a time, no guilt, and no streaks that reset to zero. Setup takes 30 seconds.</p>
-        <input class="field" id="onbName" placeholder="What should we call you?" maxlength="24" value="${esc(ui.onbName)}" autocomplete="given-name" />`;
+        <input class="field" id="onbName" placeholder="What should we call you?" maxlength="24" value="${esc(ui.onbName)}" autocomplete="given-name" />
+        <button class="tagbtn" style="margin-top:16px" data-action="settings">☁️ Already use Life OS on another device? Sign in to sync</button>`;
     } else if (st === 1) {
       body = `
         <span class="count">02 / 04</span>
@@ -376,7 +383,7 @@
     return `
       <div class="shell">
         <header class="topbar">
-          <div class="logo"><i></i>life/os</div>
+          <div class="logo"><i class="${window.LOS.sync.dotClass()}" title="${window.LOS.sync.signedIn() ? "Cloud sync on" : "Sync off (Settings)"}"></i>life/os</div>
           <nav class="tabs" aria-label="Main">
             ${TABS.map(([id, l]) => `<button class="${S().view === id ? "on" : ""} ${MOBILE_MORE.includes(id) ? "desk-only" : ""}" data-action="nav" data-view="${id}">${I[id]}<span>${l}</span>${id === "inbox" && inboxN ? `<span class="badge">${inboxN}</span>` : ""}</button>`).join("")}
             <div class="more-wrap">
@@ -625,7 +632,7 @@
           <div class="stack">
             ${top3Card()}
             <div class="c">
-              <h3>Time blocks <span class="r mut">see time, not just a list</span></h3>
+              <h3>Time blocks <button class="r tagbtn" data-action="cal-plan" title="Get Calendar reminders for these blocks">📅 Add to Calendar</button></h3>
               <div class="timeline">${tl}</div>
               ${items.length ? "" : `<p class="mut" style="font-size:13px;margin-top:4px">Add a few blocks so time feels real.</p>`}
               <form class="inline-form" data-form="event">
@@ -999,13 +1006,15 @@
       inner = `
         <h2>Settings</h2>
         <div style="margin-top:12px">
+          ${window.LOS.sync.settingsHTML()}
+          ${window.LOS.calendar.settingsHTML()}
           <div class="set-row"><div><b>Name</b><small>How Life OS greets you</small></div><input class="field" style="width:180px" data-setting-name value="${esc(S().name)}" maxlength="24" /></div>
           <div class="set-row" style="display:block"><div style="margin-bottom:10px"><b>Theme</b><small>Night for evenings, Morning for daylight</small></div>
             <div class="theme-pick">${[["dark", "🌙 Night", "Dark", "#0a0a0d"], ["light", "☀️ Morning", "Off-white", "#f6f3ec"], ["auto", "🌗 Auto", "By time of day", "linear-gradient(90deg,#f6f3ec 50%,#0a0a0d 50%)"]].map(([v, l, h, bg]) => `
               <button class="${(st.theme || "dark") === v ? "on" : ""}" data-action="theme" data-v="${v}"><span class="sw" style="background:${bg}"></span>${l}<small>${h}</small></button>`).join("")}</div></div>
           ${sw("sound", "Sounds", "A short chime when you finish things")}
           ${sw("reduceMotion", "Calm mode", "Fewer animations and no confetti")}
-          ${sw("alerts", "Desktop alerts", "Notify when a timer ends or you've hyperfocused")}
+          ${sw("alerts", "Notifications", "Notify when a timer ends or you've hyperfocused")}
           <div class="set-row"><div><b>Hyperfocus check</b><small>Gentle nudge after focusing this long</small></div>
             <select class="field" style="width:130px" data-setting="hyperfocusMin">${[[0, "Off"], [45, "45 min"], [60, "1h"], [90, "1h 30m"], [120, "2h"]].map(([v, l]) => `<option value="${v}" ${st.hyperfocusMin === v ? "selected" : ""}>${l}</option>`).join("")}</select></div>
           <div class="set-row"><div><b>My day ends at</b><small>Used for the "time left today" bar</small></div>
@@ -1015,6 +1024,8 @@
           <div class="set-row"><div><b>Start over</b><small>Deletes everything in this browser</small></div><button class="btn sm ghost" style="color:var(--pink)" data-action="wipe">Delete all</button></div>
         </div>
         <div class="foot"><button class="btn primary" data-action="close">Done</button></div>`;
+    } else if (m.type === "sync-choose") {
+      inner = window.LOS.sync.chooseHTML();
     } else if (m.type === "new-project") {
       inner = window.LOS.projects.newModal();
     } else if (m.type === "wipe") {
@@ -1266,7 +1277,7 @@
       case "close": return closeModal();
       case "overlay": if (e.target === el) closeModal(); return;
       default:
-        for (const m of ["screen", "projects", "spirit", "news", "timelog"]) if (window.LOS[m] && window.LOS[m].act(a, el)) return;
+        for (const m of ["screen", "projects", "spirit", "news", "timelog", "sync", "calendar"]) if (window.LOS[m] && window.LOS[m].act(a, el)) return;
         return;
     }
     save();
@@ -1329,7 +1340,7 @@
         return;
       }
       default:
-        for (const m of ["projects", "spirit", "timelog"]) if (window.LOS[m].submit(f, d)) return;
+        for (const m of ["projects", "spirit", "timelog", "sync"]) if (window.LOS[m].submit(f, d)) return;
         return;
     }
     save();
@@ -1343,7 +1354,7 @@
     if (el.dataset.setting) { S().settings[el.dataset.setting] = Number(el.value); save(); render(); }
     if (el.hasAttribute("data-setting-name")) { S().name = el.value.trim(); save(); render(); }
     if (el.dataset.planDate && el.value) { ui.whenFor = null; setPlan(sel.task(el.dataset.planDate), makePlan("date", el.value)); save(); render(); }
-    if (window.LOS.projects.change(el) || window.LOS.timelog.change(el)) return;
+    if (window.LOS.projects.change(el) || window.LOS.timelog.change(el) || window.LOS.calendar.change(el)) return;
     if (el.hasAttribute("data-screen-import") && el.files.length) window.LOS.screen.importFiles([...el.files]);
     if (el.hasAttribute("data-import") && el.files[0]) {
       const r = new FileReader();
@@ -1383,7 +1394,9 @@
   });
 
   window.LOS.icons = I;
-  window.LOS.app = { toast, render, save, reward, addTask, makeTop, startFocus, openModal, closeModal, renderModal };
+  window.LOS.app = { toast, render, save, reward, addTask, makeTop, startFocus, openModal, closeModal, renderModal, notify };
+  // offline + notifications (not available when opened as a file)
+  if ("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(() => {});
   render();
   window.LOS.render = render;
 })();

@@ -768,3 +768,20 @@ a.btn { text-decoration: none; }
 .tlp-row .field { padding: 7px 10px; font-size: 13px; background: var(--card); }
 .tlp-emo { text-align: center; }
 .doing-cur .emo:empty, .tl-row .emo:empty { display: none; }
+
+/* ================= Sync & reminders ================= */
+.logo i.sync-ok { background: var(--lime); }
+.logo i.sync-busy { animation: blink 1s ease-in-out infinite; }
+.logo i.sync-err { background: var(--pink); box-shadow: 0 0 12px var(--pink); }
+.rem-row { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+.rem-row .t { flex: 1; font-size: 14px; }
+.rem-row .t small { display: block; color: var(--mut); font-size: 11px; }
+.rem-row .field { width: 132px; padding: 6px 10px; }
+/* iPhone home-screen app: respect the notch / home bar */
+@supports (padding: env(safe-area-inset-top)) {
+  .shell { padding-top: calc(22px + env(safe-area-inset-top)); }
+  @media (max-width: 860px) {
+    .shell { padding-top: calc(16px + env(safe-area-inset-top)); padding-bottom: calc(110px + env(safe-area-inset-bottom)); }
+    .tabs { bottom: calc(12px + env(safe-area-inset-bottom)); }
+  }
+}

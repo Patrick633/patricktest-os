@@ -135,6 +135,7 @@ window.LOS = window.LOS || {};
       if (S().settings.sound) window.LOS.fx.bell();
       app().save(); app().render();
       app().toast(`🕊️ ${q.dur} minutes of quiet. Well done.`);
+      app().notify("Quiet time done 🕊️", `${q.dur} minutes. Well done.`);
     }
   }, 1000);
 
