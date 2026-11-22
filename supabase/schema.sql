@@ -21,3 +21,8 @@ create policy "read own state"   on public.lifeos_state for select using (auth.u
 create policy "insert own state" on public.lifeos_state for insert with check (auth.uid() = user_id);
 create policy "update own state" on public.lifeos_state for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "delete own state" on public.lifeos_state for delete using (auth.uid() = user_id);
+
+-- Only signed-in users may use this table through the Data API (and RLS above limits them to their own row).
+-- Needed when "Grant API access to new tables automatically" is off.
+revoke all on public.lifeos_state from anon;
+grant select, insert, update, delete on public.lifeos_state to authenticated;

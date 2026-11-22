@@ -69,15 +69,51 @@ window.LOS = window.LOS || {};
   };
 
   // ---------------------------------------------------------------- auth flow
+  const appUrl = () => location.origin + location.pathname;
   const sendCode = async (email) => {
-    await api("/auth/v1/otp", { method: "POST", body: { email, create_user: true }, auth: false });
+    // the email contains a sign-in link (and a code, if the email template includes one)
+    await api(`/auth/v1/otp?redirect_to=${encodeURIComponent(appUrl())}`, { method: "POST", body: { email, create_user: true }, auth: false });
     status.codeSentTo = email;
   };
-  const verifyCode = async (email, code) => {
-    const d = await api("/auth/v1/verify", { method: "POST", body: { type: "email", email, token: code.trim() }, auth: false });
+  const finishSignIn = (d) => {
     saveSession(d);
     status.codeSentTo = null;
     setCfg({ lastRemoteAt: 0, lastPushedAt: 0, firstSync: true });
+  };
+  /** session from "#access_token=…&refresh_token=…" (what the email link redirects to) */
+  const sessionFromHash = async (hash) => {
+    const h = new URLSearchParams(String(hash).replace(/^#/, ""));
+    if (!h.get("access_token")) return false;
+    const user = await api("/auth/v1/user", { headers: { Authorization: `Bearer ${h.get("access_token")}` }, auth: false });
+    finishSignIn({ access_token: h.get("access_token"), refresh_token: h.get("refresh_token"), expires_in: Number(h.get("expires_in")) || 3600, user });
+    return true;
+  };
+  /** accepts a 6–8 digit code, the link from the email, or the page address after tapping the link */
+  const verifyCode = async (email, input) => {
+    const v = String(input || "").trim();
+    if (/^\d{6,10}$/.test(v)) {
+      finishSignIn(await api("/auth/v1/verify", { method: "POST", body: { type: "email", email, token: v }, auth: false }));
+      return;
+    }
+    let url;
+    try { url = new URL(v); } catch { throw new Error("Paste the whole link from the email (it starts with https://)."); }
+    if (url.hash.includes("access_token")) { await sessionFromHash(url.hash); return; }
+    const token = url.searchParams.get("token");
+    if (!token) throw new Error("That link doesn't look like the sign-in link from the email.");
+    const type = url.searchParams.get("type") === "signup" ? "signup" : "magiclink";
+    finishSignIn(await api("/auth/v1/verify", { method: "POST", body: { type, token_hash: token }, auth: false }));
+  };
+  // arriving from the email link on this device: sign in automatically
+  const consumeHash = async () => {
+    const hash = location.hash || "";
+    if (!configured() || !/access_token=|error_description=/.test(hash)) return;
+    history.replaceState(null, "", location.pathname + location.search);
+    const h = new URLSearchParams(hash.replace(/^#/, ""));
+    if (h.get("error_description")) { status.error = h.get("error_description").replace(/\+/g, " "); setTimeout(() => app() && app().toast(`Sign-in link problem: ${esc(status.error)}`), 500); return; }
+    try {
+      await sessionFromHash(hash);
+      setTimeout(() => { app() && app().toast("✓ Signed in. Syncing…"); syncNow({ quiet: false }); }, 300);
+    } catch (e) { status.error = e.message; }
   };
   const signOut = () => { setCfg({ session: null, lastRemoteAt: 0, lastPushedAt: 0 }); status.state = "off"; };
 
@@ -183,7 +219,7 @@ window.LOS = window.LOS || {};
   document.addEventListener("visibilitychange", () => { if (!document.hidden) syncNow(); });
   window.addEventListener("online", () => syncNow());
   setInterval(() => { if (!document.hidden) syncNow(); }, 60 * 1000);
-  setTimeout(() => syncNow(), 800);
+  consumeHash().finally(() => setTimeout(() => syncNow(), 800));
 
   // ---------------------------------------------------------------- UI (Settings section + modals)
   const ago = (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : `${Math.round(m / 60)}h ago`; };
@@ -202,10 +238,14 @@ window.LOS = window.LOS || {};
         </form>`;
     } else if (!s) {
       body = status.codeSentTo ? `
-        <p class="mut" style="font-size:13px;margin-bottom:10px">We emailed a 6-digit code to <b style="color:var(--ink-2)">${esc(status.codeSentTo)}</b>.</p>
+        <p class="mut" style="font-size:13px;margin-bottom:6px;line-height:1.5">We emailed a sign-in link to <b style="color:var(--ink-2)">${esc(status.codeSentTo)}</b> (check spam too).</p>
+        <ul class="mut" style="font-size:12px;line-height:1.6;margin:0 0 10px 16px">
+          <li><b style="color:var(--ink-2)">On this computer:</b> just click the link in the email.</li>
+          <li><b style="color:var(--ink-2)">In the iPhone app:</b> press and hold the link → <b style="color:var(--ink-2)">Copy Link</b> → paste it below. (Tapping it opens Safari instead.)</li>
+        </ul>
         <form class="inline-form" data-form="sync-code" style="margin-top:0">
-          <input class="field" name="code" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" maxlength="10" required style="letter-spacing:.2em;font-family:var(--mono)" />
-          <button class="btn sm primary" ${status.busy ? "disabled" : ""}>Verify</button>
+          <input class="field" name="code" autocomplete="one-time-code" placeholder="Paste the link (or code) from the email" required autocapitalize="off" autocorrect="off" spellcheck="false" />
+          <button class="btn sm primary" ${status.busy ? "disabled" : ""}>Sign in</button>
         </form>
         <button class="tagbtn" style="margin-top:8px" data-action="sync-restart">Use a different email</button>`
       : `
@@ -299,7 +339,7 @@ window.LOS = window.LOS || {};
       status.busy = true; status.error = ""; refreshUI();
       verifyCode(status.codeSentTo, d.code)
         .then(() => { A.toast("✓ Signed in. Syncing…"); status.busy = false; return syncNow({ quiet: false }); })
-        .catch((e) => { status.error = e.status === 403 || /expired|invalid/i.test(e.message) ? "That code didn't work or expired. Try again or resend." : e.message; })
+        .catch((e) => { status.error = e.status === 403 || /expired|invalid/i.test(e.message) ? "That link or code didn't work or expired (each link works once). Send a new one." : e.message; })
         .finally(() => { status.busy = false; refreshUI(); });
       return true;
     }

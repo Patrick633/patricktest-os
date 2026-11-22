@@ -15,39 +15,26 @@ O app precisa de um endereço na internet para abrir no iPhone.
 4. Espere 1–2 minutos. O endereço será:
    **https://patrick633.github.io/patricktest-os/**
 
-## 2. Criar a sincronização (Supabase, grátis)
+## 2. Sincronização (Supabase) ✅ já configurada
 
-1. Crie uma conta em **https://supabase.com** → **New project** (escolha uma senha de banco e a região mais próxima, ex.: São Paulo).
-2. **Criar a tabela:** menu **SQL Editor** → **New query** → cole todo o conteúdo do arquivo [`supabase/schema.sql`](../supabase/schema.sql) → **Run**.
-3. **Login por código:** menu **Authentication** → **Emails** (ou *Email Templates*) → **Magic Link**. Troque o texto por:
+O projeto `jgfrdrptqykiphszxnpd` já está pronto: tabela protegida (cada conta só vê os próprios dados), login por e-mail e o endereço do app. As chaves públicas já estão em `sync-config.js`.
 
-   ```
-   <h2>Seu código do Life OS</h2>
-   <p>Digite este código no app: <strong>{{ .Token }}</strong></p>
-   ```
-
-   → **Save**. (Assim o e-mail traz um código de 6 dígitos, que funciona dentro do app do iPhone.)
-4. **Pegar as chaves:** **Project Settings** → **API** (ou *Data API*). Copie:
-   - **Project URL** (ex.: `https://abcdefgh.supabase.co`)
-   - **anon public** key
-5. Mande essas duas para o Claude colocar no arquivo `sync-config.js` (ou edite você mesmo). Elas podem ficar públicas: a chave *anon* é feita para isso, e a tabela só deixa cada pessoa ver os próprios dados.
-6. **Depois de entrar pela primeira vez** (passo 3), em **Authentication → Sign In / Providers**, desligue **Allow new users to sign up**, para ninguém mais criar conta no seu projeto.
+> O plano grátis do Supabase manda um **link** de login por e-mail (não dá para trocar por código sem um servidor de e-mail próprio) e no máximo **2 e-mails por hora**.
 
 ## 3. Entrar e sincronizar
 
-**No Mac (onde estão seus dados):**
-1. Abra o Life OS → ⚙️ **Settings** → **Sync across devices**.
-2. Digite seu e-mail → **Send code** → digite o código que chegou → **Verify**.
-3. Seus dados sobem para a nuvem. ✓
+**No Mac (primeiro, onde estão seus dados):**
+1. Abra **https://patrick633.github.io/patricktest-os/** → ⚙️ **Settings** → **Sync across devices**.
+2. Digite seu e-mail → **Send code**.
+3. Abra o e-mail **no Mac** e **clique no link**. O Life OS abre já conectado e seus dados sobem para a nuvem. ✓
 
-**No iPhone:**
-1. Abra **https://patrick633.github.io/patricktest-os/** no **Safari**.
-2. Toque em **Compartilhar** (quadrado com seta) → **Adicionar à Tela de Início** → **Adicionar**.
-3. Abra o **Life OS pela tela de início** (não pelo Safari).
-4. Na tela de boas-vindas toque em **“☁️ Already use Life OS on another device? Sign in to sync”**, use o **mesmo e-mail** e o código.
-5. Pronto: os mesmos dados do Mac. ✓
+**No iPhone (app da tela de início):**
+1. Abra o **Life OS pelo ícone**. Na tela de boas-vindas toque em **“☁️ Already use Life OS on another device? Sign in to sync”** (ou ⚙️ → Sync).
+2. Digite o **mesmo e-mail** → **Send code**.
+3. No app **Mail**, **segure o dedo no link** → **Copiar Link**. (Não toque nele: isso abriria o Safari, que é separado do app.)
+4. Volte ao Life OS, **cole o link** no campo e toque em **Sign in**. Os mesmos dados do Mac aparecem. ✓
 
-> Se os dois aparelhos tiverem dados diferentes na primeira vez, o app pergunta qual versão manter. A outra vira um **backup** (Settings → Sync → Backups), nada se perde.
+> Se os dois aparelhos tiverem dados diferentes na primeira vez, o app pergunta qual manter. A outra vira **backup** (Settings → Sync → Backups), nada se perde.
 
 ## 4. Notificações
 
