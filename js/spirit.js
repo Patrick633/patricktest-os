@@ -226,10 +226,10 @@ window.LOS = window.LOS || {};
               <h3>${christian ? "Prayer list" : "Intentions"} <span class="r mono">${prayers.length}</span></h3>
               <form class="inline-form" data-form="sp-prayer" style="margin-top:0"><input class="field" name="text" placeholder="${christian ? "Pray for…" : "I intend to…"}" maxlength="120" autocomplete="off" /><button class="btn sm primary">Add</button></form>
               <div class="mini-list" style="margin-top:10px">${prayers.map((p) => `
-                <div class="mini-item"><span class="t">${esc(p.text)}<br><small class="mut">since ${p.at}</small></span>
+                <div class="mini-item"><span class="t">${esc(p.text)}<br><small class="mut">since ${esc(p.at)}</small></span>
                   <button class="tiny lime" data-action="sp-answer" data-id="${p.id}">${christian ? "Answered 🙏" : "Done ✓"}</button>
                   <button class="tiny" data-action="sp-del" data-id="${p.id}" aria-label="Remove">${window.LOS.icons.x}</button></div>`).join("") || `<p class="mut" style="font-size:13px">${christian ? "Add people and things you're praying for." : "Add how you want to show up."}</p>`}</div>
-              ${answered.length ? `<details class="how"><summary>${christian ? "🙏 Answered" : "✓ Done"} (${answered.length})</summary>${answered.slice(-10).reverse().map((p) => `<p>✓ ${esc(p.text)} <span class="mut">· ${p.answeredAt}</span></p>`).join("")}</details>` : ""}
+              ${answered.length ? `<details class="how"><summary>${christian ? "🙏 Answered" : "✓ Done"} (${answered.length})</summary>${answered.slice(-10).reverse().map((p) => `<p>✓ ${esc(p.text)} <span class="mut">· ${esc(p.answeredAt)}</span></p>`).join("")}</details>` : ""}
             </div>
             <div class="c">
               <h3>Settings</h3>

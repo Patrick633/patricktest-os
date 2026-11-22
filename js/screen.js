@@ -7,7 +7,7 @@
 window.LOS = window.LOS || {};
 (() => {
   "use strict";
-  const { dkey, addDays, uid, esc, today, fmtDur, store } = window.LOS;
+  const { dkey, addDays, uid, esc, today, fmtDur, store, safeUrl, clean } = window.LOS;
   const S = () => store.state;
   const SC = () => S().screen;
   const app = () => window.LOS.app; // toast, render, save (set by app.js)
@@ -64,7 +64,7 @@ window.LOS = window.LOS || {};
       const links = cell.querySelectorAll("a");
       if (!links.length || !ytId(links[0].getAttribute("href"))) return;
       const parts = cell.innerHTML.split(/<br\s*\/?>/i);
-      const tmp = document.createElement("div");
+      const tmp = doc.createElement("div");
       tmp.innerHTML = parts[parts.length - 1];
       const at = parseLooseDate(tmp.textContent);
       if (isNaN(at)) return;
@@ -147,7 +147,7 @@ window.LOS = window.LOS || {};
   // ================================================================ extension bridge
   window.addEventListener("message", (e) => {
     if (e.source !== window || !e.data || e.data.source !== "lifeos-companion" || e.data.type === "news") return;
-    const p = e.data.payload || {};
+    const p = clean(e.data.payload || {});
     if (p.sites) Object.assign(SC().sites, p.sites); // extension is the source of truth per day
     if (Array.isArray(p.videos)) {
       p.videos.forEach((v) => {
@@ -350,7 +350,7 @@ window.LOS = window.LOS || {};
               ${recent.length ? `<div class="vlist">${recent.map((v) => `
                 <div class="vrow">
                   ${srcPill(v)}
-                  <div class="t">${v.url ? `<a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.title)}</a>` : esc(v.title)}
+                  <div class="t">${v.url ? `<a href="${esc(safeUrl(v.url))}" target="_blank" rel="noopener">${esc(v.title)}</a>` : esc(v.title)}
                     <small>${v.channel ? esc(v.channel) + " · " : ""}${new Date(v.at).toLocaleString("en-US", { weekday: "short", hour: "numeric", minute: "2-digit" })}</small></div>
                   <span class="mono mut" style="font-size:12px">${v.guessed ? "~" : ""}${fmtDur(v.est)}</span>
                 </div>`).join("")}</div>`

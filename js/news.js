@@ -6,7 +6,7 @@
 window.LOS = window.LOS || {};
 (() => {
   "use strict";
-  const { esc, store } = window.LOS;
+  const { esc, store, safeUrl } = window.LOS;
   const S = () => store.state;
   const NW = () => S().news;
   const app = () => window.LOS.app;
@@ -164,8 +164,8 @@ window.LOS = window.LOS || {};
               <div class="nrow ${n.read[i.id] ? "read" : ""}">
                 <span class="nsrc" style="--sc:${SOURCES[i.src].color}">${SOURCES[i.src].name}</span>
                 <div class="t">
-                  <a href="${esc(i.url)}" target="_blank" rel="noopener" data-action="news-open" data-id="${esc(i.id)}">${esc(i.title)}</a>
-                  <small>${ago(i.at)}${i.score ? ` · ${i.score} ${i.src === "hn" ? "points" : "reactions"}` : ""}${i.discuss ? ` · <a href="${esc(i.discuss)}" target="_blank" rel="noopener">${i.comments || 0} comments</a>` : ""}</small>
+                  <a href="${esc(safeUrl(i.url))}" target="_blank" rel="noopener" data-action="news-open" data-id="${esc(i.id)}">${esc(i.title)}</a>
+                  <small>${ago(i.at)}${i.score ? ` · ${i.score} ${i.src === "hn" ? "points" : "reactions"}` : ""}${i.discuss ? ` · <a href="${esc(safeUrl(i.discuss))}" target="_blank" rel="noopener">${i.comments || 0} comments</a>` : ""}</small>
                 </div>
                 <button class="tiny" data-action="news-save" data-id="${esc(i.id)}" title="Save to Inbox to read later">Save</button>
                 <button class="tiny" data-action="news-read" data-id="${esc(i.id)}" title="${n.read[i.id] ? "Mark unread" : "Mark read"}">${n.read[i.id] ? "↺" : "✓"}</button>
@@ -177,7 +177,7 @@ window.LOS = window.LOS || {};
             <div class="c">
               <h3>Actively exploited <span class="r mut">CISA KEV</span></h3>
               ${n.kev.length ? `<div class="kev">${n.kev.map((v) => `
-                <a class="kev-row" href="https://nvd.nist.gov/vuln/detail/${esc(v.id)}" target="_blank" rel="noopener">
+                <a class="kev-row" href="https://nvd.nist.gov/vuln/detail/${encodeURIComponent(v.id)}" target="_blank" rel="noopener">
                   <span class="mono kev-id">${esc(v.id)}</span>
                   <span class="t">${esc(v.vendor)} ${esc(v.product)}<small>${esc(v.name)}</small></span>
                   <span class="kev-meta mono">${esc(v.added)}${v.ransomware ? `<i class="pill" style="background:rgba(255,92,138,.15);color:var(--pink)">ransomware</i>` : ""}</span>

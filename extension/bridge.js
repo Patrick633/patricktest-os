@@ -1,7 +1,9 @@
 /* Life OS Companion — bridge. Runs on local pages and only talks to a page that is Life OS. */
 (() => {
   "use strict";
-  if (!document.querySelector('meta[name="lifeos"]')) return;
+  // Only share data with the real Life OS (never with other pages on the same host).
+  const ALLOWED = [/^https:\/\/patrick633\.github\.io\/patricktest-os\//, /^http:\/\/(localhost|127\.0\.0\.1):8000\//];
+  if (!ALLOWED.some((re) => re.test(location.href)) || !document.querySelector('meta[name="lifeos"]')) return;
 
   chrome.runtime.sendMessage({ type: "lifeos-tab" }).catch(() => {});
 

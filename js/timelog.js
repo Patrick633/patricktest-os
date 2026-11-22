@@ -82,7 +82,7 @@ window.LOS = window.LOS || {};
   }, 15000);
 
   // ---------------------------------------------------------------- views
-  const chip = (p, cls = "") => `<button class="chip tl-chip ${cls}" data-action="tl-start" data-l="${esc(p[1])}" data-e="${esc(p[0])}" data-c="${p[2]}" style="--cc:${(CATS[p[2]] || CATS.life).color}">${p[0] ? `${p[0]} ` : ""}${esc(p[1])}</button>`;
+  const chip = (p, cls = "") => `<button class="chip tl-chip ${cls}" data-action="tl-start" data-l="${esc(p[1])}" data-e="${esc(p[0])}" data-c="${esc(p[2])}" style="--cc:${(CATS[p[2]] || CATS.life).color}">${p[0] ? `${esc(p[0])} ` : ""}${esc(p[1])}</button>`;
   const catOptions = (sel = "life") => Object.entries(CATS).map(([id, c]) => `<option value="${id}" ${sel === id ? "selected" : ""}>${c.name}</option>`).join("");
 
   /** recent/most-used first, so the chips you need are always near */
@@ -116,7 +116,7 @@ window.LOS = window.LOS || {};
         <h3>Doing now <span class="r mut">life counts, not just tasks</span></h3>
         ${c ? `
           <div class="doing-cur" style="--cc:${CATS[c.cat].color}">
-            <span class="emo">${c.emoji}</span>
+            <span class="emo">${esc(c.emoji)}</span>
             <div class="grow"><b>${esc(c.label)}</b><small data-tl-elapsed>${elapsedText()}</small></div>
             <button class="btn sm ghost" data-action="tl-stop">■ Stop</button>
           </div>
@@ -185,13 +185,13 @@ window.LOS = window.LOS || {};
         ${tot.length ? `<div class="tl-tot">${tot.map(([c, m]) => `<span><i class="dot" style="background:${CATS[c].color}"></i>${CATS[c].name} <b class="mono">${fmtDur(m)}</b></span>`).join("")}</div>` : ""}
         <div class="tl-list">${es.length ? es.map((e) => ui.editId === e.id ? `
           <div class="tl-row editing">
-            <span class="emo">${e.emoji}</span><span class="t">${esc(e.label)}</span>
+            <span class="emo">${esc(e.emoji)}</span><span class="t">${esc(e.label)}</span>
             <input class="field" type="time" value="${new Date(e.start).toTimeString().slice(0, 5)}" data-tl-time="${e.id}:start" aria-label="Start" />
             <input class="field" type="time" value="${new Date(e.end).toTimeString().slice(0, 5)}" data-tl-time="${e.id}:end" aria-label="End" />
             <button class="tiny" data-action="tl-edit" data-id="">Done</button>
           </div>` : `
           <div class="tl-row ${e.live ? "live" : ""}">
-            <span class="emo">${e.emoji}</span>
+            <span class="emo">${esc(e.emoji)}</span>
             <span class="t">${esc(e.label)}<small>${fmtT(e.start)} – ${e.live ? "now" : fmtT(e.end)}</small></span>
             <span class="mono mut" style="font-size:12px">${fmtDur(mins(e.s, e.e2))}</span>
             ${e.live ? `<button class="tiny" data-action="tl-stop">Stop</button>` : `<button class="tiny" data-action="tl-edit" data-id="${e.id}" title="Edit times">✎</button><button class="tiny" data-action="tl-del" data-id="${e.id}" aria-label="Delete">${window.LOS.icons.x}</button>`}
@@ -234,7 +234,7 @@ window.LOS = window.LOS || {};
         const prev = TL().current;
         start(el.dataset.l, el.dataset.e, el.dataset.c);
         ui.showOther = false;
-        A.toast(`${el.dataset.e} ${esc(el.dataset.l)}${prev ? ` · ${esc(prev.label)} saved` : ""}`);
+        A.toast(`${esc(el.dataset.e)} ${esc(el.dataset.l)}${prev ? ` · ${esc(prev.label)} saved` : ""}`);
         break;
       }
       case "tl-track": {
@@ -245,7 +245,7 @@ window.LOS = window.LOS || {};
       }
       case "tl-stop": {
         const e = stop();
-        A.toast(e ? `${e.emoji} ${esc(e.label)} · ${fmtDur(mins(e.start, e.end))} logged` : "Stopped");
+        A.toast(e ? `${esc(e.emoji)} ${esc(e.label)} · ${fmtDur(mins(e.start, e.end))} logged` : "Stopped");
         break;
       }
       case "tl-other": ui.showOther = !ui.showOther; break;
@@ -283,7 +283,7 @@ window.LOS = window.LOS || {};
       if (!presetFor(label)) { TL().custom.unshift([emoji, label, d.cat]); TL().custom = TL().custom.slice(0, 8); }
       start(label, emoji, d.cat);
       ui.showOther = false;
-      A.save(); A.render(); A.toast(`${emoji} ${esc(label)}`);
+      A.save(); A.render(); A.toast(`${esc(emoji)} ${esc(label)}`);
       return true;
     }
     if (form.dataset.form === "tl-preset-add") {
@@ -304,7 +304,7 @@ window.LOS = window.LOS || {};
       TL().entries.sort((a, b) => a.start - b.start);
       ui.showPast = false;
       A.save(); A.render();
-      A.toast(`${p ? p[0] : ""} ${esc(label)} · ${fmtDur(mins(s, Math.min(e, Date.now())))} logged`);
+      A.toast(`${p ? esc(p[0]) : ""} ${esc(label)} · ${fmtDur(mins(s, Math.min(e, Date.now())))} logged`);
       return true;
     }
     return false;

@@ -131,7 +131,7 @@ window.LOS = window.LOS || {};
     const ph = current(p), st = nextStep(p), wm = weekMinutes(p);
     return `
       <div class="c pcard" data-action="p-open" data-id="${p.id}" role="button" tabindex="0">
-        <div class="pc-top"><span class="pc-emo">${p.emoji}</span>
+        <div class="pc-top"><span class="pc-emo">${esc(p.emoji)}</span>
           <div class="grow"><b>${esc(p.title)}</b><small>${fmtD(p.start)} → ${fmtDY(p.end)} · week ${weekNo(p)} of ${weeksTotal(p)}</small></div>
           ${p.status !== "active" ? `<span class="pill gray">${p.status}</span>` : ""}</div>
         ${p.why ? `<p class="pc-why">“${esc(p.why)}”</p>` : ""}
@@ -223,7 +223,7 @@ window.LOS = window.LOS || {};
         <button class="btn quiet sm" data-action="p-back" style="margin:-8px 0 8px -10px">← All projects</button>
         <div class="hero">
           <div style="min-width:0">
-            <h1 class="p-h1"><span class="p-emo">${p.emoji}</span> ${pedit("project", p.id, p.title, "p-title")}</h1>
+            <h1 class="p-h1"><span class="p-emo">${esc(p.emoji)}</span> ${pedit("project", p.id, p.title, "p-title")}</h1>
             <div class="p-why">${pedit("why", p.id, p.why, "why-title", "Why does this matter to you? Click to write it")}</div>
           </div>
           <div class="row" style="gap:28px">
@@ -292,7 +292,7 @@ window.LOS = window.LOS || {};
         <h3>Project steps <button class="r tagbtn" data-action="nav" data-view="projects">All</button></h3>
         <div class="mini-list">${ps.map((p) => { const st = nextStep(p); return `
           <div class="mini-item">
-            <span>${p.emoji}</span>
+            <span>${esc(p.emoji)}</span>
             <span class="t"><b style="font-weight:500">${esc(p.title)}</b><br><small class="mut">${st ? esc(st.text) : "Add the next step"}</small></span>
             ${st ? `<button class="add" data-action="p-step-today" data-id="${st.id}">+ Today</button>` : `<button class="add" data-action="p-open" data-id="${p.id}">Open</button>`}
           </div>`; }).join("")}</div>
@@ -408,7 +408,7 @@ window.LOS = window.LOS || {};
         const p = byId(id);
         p.status = el.dataset.v;
         A.save(); A.render();
-        if (p.status === "done") A.reward(`${p.emoji} ${esc(p.title)} complete! That's huge. 🏆`);
+        if (p.status === "done") A.reward(`${esc(p.emoji)} ${esc(p.title)} complete! That's huge. 🏆`);
         else A.toast(p.status === "paused" ? "Paused. No guilt." : "Welcome back ✨");
         return true;
       }
@@ -433,7 +433,7 @@ window.LOS = window.LOS || {};
       S().view = "projects";
       A.save();
       A.closeModal();
-      A.toast(`${p.emoji} Project created. Start with the first tiny step.`);
+      A.toast(`${esc(p.emoji)} Project created. Start with the first tiny step.`);
       return true;
     }
     if (form.dataset.form === "p-step") {

@@ -482,7 +482,7 @@
         ${window.LOS.timelog.winsLine()}
         ${w ? `<div class="mini-list" style="margin-top:12px">
           ${done.map((t) => `<div class="mini-item win-row"><span style="color:var(--accent-ink)">${I.check}</span><span class="t">${esc(t.title)}</span><button class="tiny undo" data-action="undone" data-id="${t.id}" title="Mark as not done">↺ Undo</button></div>`).join("")}
-          ${S().habits.filter((h) => h.log[today()]).map((h) => `<div class="mini-item win-row"><span>${h.emoji}</span><span class="t">${esc(h.name)}${h.log[today()] === "mini" ? ` <span class="mut">(mini)</span>` : ""}</span><button class="tiny undo" data-action="habit-undo" data-id="${h.id}" title="Mark as not done">↺ Undo</button></div>`).join("")}
+          ${S().habits.filter((h) => h.log[today()]).map((h) => `<div class="mini-item win-row"><span>${esc(h.emoji)}</span><span class="t">${esc(h.name)}${h.log[today()] === "mini" ? ` <span class="mut">(mini)</span>` : ""}</span><button class="tiny undo" data-action="habit-undo" data-id="${h.id}" title="Mark as not done">↺ Undo</button></div>`).join("")}
         </div>` : ""}
       </div>`;
   };
@@ -574,11 +574,11 @@
     const days = [...Array(7)].map((_, i) => addDays(new Date(), i - 6));
     return `
       <div class="habit ${compact ? "compact" : ""}">
-        <span class="emo">${h.emoji}</span>
+        <span class="emo">${esc(h.emoji)}</span>
         <div class="info">
           <b>${esc(h.name)}</b>
           <small>${n} of last 7 days${h.mini && !compact ? ` · mini: ${esc(h.mini)}` : ""}</small>
-          ${compact ? "" : `<div class="week7">${days.map((d) => { const k = dkey(d); return `<i class="${h.log[k] || ""} ${k === today() ? "today" : ""}" title="${d.toLocaleDateString("en-US", { weekday: "short" })}"></i>`; }).join("")}</div>`}
+          ${compact ? "" : `<div class="week7">${days.map((d) => { const k = dkey(d); return `<i class="${h.log[k] === "full" || h.log[k] === "mini" ? h.log[k] : ""} ${k === today() ? "today" : ""}" title="${d.toLocaleDateString("en-US", { weekday: "short" })}"></i>`; }).join("")}</div>`}
         </div>
         <div class="hbtns">
           <button class="hbtn ${v === "full" ? "on" : ""}" data-action="habit" data-id="${h.id}" data-v="full">${v === "full" ? "✓ Done" : "Done"}</button>
@@ -1223,7 +1223,7 @@
         const prev = h.log[today()];
         h.log[today()] = v;
         save(); render();
-        reward(v === "mini" ? "Mini counts. Still showed up. ✓" : `${h.emoji} ${esc(h.name)} ✓`, () => { if (prev) h.log[today()] = prev; else delete h.log[today()]; });
+        reward(v === "mini" ? "Mini counts. Still showed up. ✓" : `${esc(h.emoji)} ${esc(h.name)} ✓`, () => { if (prev) h.log[today()] = prev; else delete h.log[today()]; });
         return;
       }
       case "habit-undo": {
@@ -1393,6 +1393,11 @@
     if (e.key === "Enter" && document.activeElement?.id === "onbName") act("onb-next", document.activeElement, e);
   });
 
+  // never run inside another site's frame (protects against clickjacking)
+  if (window.top !== window.self) {
+    document.body.innerHTML = '<p style="padding:24px;font-family:system-ui;color:#fff;background:#0a0a0d">Open Life OS directly: <a style="color:#c8ff4d" target="_top" href="' + location.href.replace(/"/g, "") + '">' + location.host + "</a></p>";
+    return;
+  }
   window.LOS.icons = I;
   window.LOS.app = { toast, render, save, reward, addTask, makeTop, startFocus, openModal, closeModal, renderModal, notify };
   // offline + notifications (not available when opened as a file)

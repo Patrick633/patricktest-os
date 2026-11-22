@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Life OS Companion",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Counts time on the active tab, saves the YouTube videos you watch and fetches cybersecurity news feeds for your Life OS. Data stays on your computer.",
   "permissions": [
     "tabs",
@@ -28,10 +28,9 @@
   "content_scripts": [
     {
       "matches": [
-        "http://localhost/*",
-        "http://127.0.0.1/*",
-        "file:///*",
-        "https://*.github.io/*"
+        "https://patrick633.github.io/patricktest-os/*",
+        "http://localhost:8000/*",
+        "http://127.0.0.1:8000/*"
       ],
       "js": [
         "bridge.js"

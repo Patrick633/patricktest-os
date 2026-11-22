@@ -61,6 +61,8 @@ The Screen tab shows a 14-day chart (iPhone, Mac/browser, videos), an optional s
 
 Step-by-step setup (Portuguese): [`docs/SETUP-IPHONE.md`](docs/SETUP-IPHONE.md). Database script: [`supabase/schema.sql`](supabase/schema.sql).
 
+See [`SECURITY.md`](SECURITY.md) for where data lives and how the app is protected.
+
 ## Run
 
 Open `index.html` in a browser, or serve the folder:

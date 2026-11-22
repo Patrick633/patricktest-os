@@ -69,4 +69,4 @@ O app precisa de um endereço na internet para abrir no iPhone.
 
 Use **https://patrick633.github.io/patricktest-os/** também no Mac (salve nos favoritos). Não precisa mais de Terminal nem de baixar zip: cada atualização chega sozinha.
 
-A extensão Life OS Companion também funciona nesse endereço.
+A extensão Life OS Companion também funciona nesse endereço. Depois de cada atualização da extensão, abra `chrome://extensions` e clique em **↻** no Life OS Companion. Por segurança, ela só conversa com esse endereço e com `localhost:8000`.
